@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATCS Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green:  #00ff9d;
+    --yellow: #ffe600;
+    --red:    #ff2d55;
+    --blue:   #00d4ff;
+    --bg:     #060d1a;
+    --panel:  rgba(15,23,42,0.95);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    font-family: 'Rajdhani', sans-serif;
+    color: #c8d8f0;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  h1 {
+    font-size: 22px;
+    letter-spacing: 3px;
+    color: var(--blue);
+    text-align: center;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-radius: 10px;
+    padding: 18px;
+    position: relative;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--blue), transparent);
+    border-radius: 10px 10px 0 0;
+  }
+  .card-title {
+    font-size: 10px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: rgba(0,212,255,0.6);
+    margin-bottom: 14px;
+  }
+
+  /* Traffic Light Cards */
+  .lights-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .light-box {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+  .light-dir {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: rgba(200,216,240,0.5);
+    margin-bottom: 8px;
+  }
+  .lights-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .led {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    transition: all 0.3s;
+  }
+  .led.off { opacity: 0.12; }
+  .led.red-on    { background: var(--red);    box-shadow: 0 0 12px var(--red); }
+  .led.yellow-on { background: var(--yellow); box-shadow: 0 0 12px var(--yellow); }
+  .led.green-on  { background: var(--green);  box-shadow: 0 0 12px var(--green); }
+  .led-base-r { background: var(--red); }
+  .led-base-y { background: var(--yellow); }
+  .led-base-g { background: var(--green); }
+  .count-num {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 24px;
+    color: var(--blue);
+  }
+  .count-label {
+    font-size: 9px;
+    color: rgba(200,216,240,0.4);
+    letter-spacing: 1px;
+  }
+
+  /* Phase card */
+  .phase-display {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 28px;
+    text-align: center;
+    padding: 14px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    transition: all 0.3s;
+  }
+  .phase-GREEN     { color: var(--green);  background: rgba(0,255,157,0.08);  border: 1px solid rgba(0,255,157,0.2); }
+  .phase-YELLOW    { color: var(--yellow); background: rgba(255,230,0,0.08);  border: 1px solid rgba(255,230,0,0.2); }
+  .phase-CLEARANCE { color: var(--red);    background: rgba(255,45,85,0.08);  border: 1px solid rgba(255,45,85,0.2); }
+  .phase-SKIP      { color: #8899bb;       background: rgba(100,120,160,0.08);border: 1px solid rgba(100,120,160,0.2); }
+
+  /* Progress bar */
+  .progress-bg {
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s, background 0.3s;
+  }
+
+  /* Stats */
+  .stats-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 13px;
+  }
+  .stats-row:last-child { border-bottom: none; }
+  .stats-label { color: rgba(200,216,240,0.5); }
+  .stats-val   { font-family: 'Share Tech Mono', monospace; color: var(--blue); }
+
+  /* Log */
+  .log-box {
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(0,212,255,0.06);
+    border-radius: 6px;
+    padding: 8px 10px;
+    height: 140px;
+    overflow-y: auto;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    line-height: 1.6;
+  }
+  .log-ok   { color: var(--green); }
+  .log-warn { color: var(--yellow); }
+  .log-err  { color: var(--red); }
+  .log-info { color: var(--blue); }
+
+  /* Connection badge */
+  .conn-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+  }
+  .conn-ok  { background: rgba(0,255,157,0.1); color: var(--green); border: 1px solid rgba(0,255,157,0.3); }
+  .conn-err { background: rgba(255,45,85,0.1);  color: var(--red);   border: 1px solid rgba(255,45,85,0.3); }
+  .dot { width:7px;height:7px;border-radius:50%; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+  .dot-pulse { animation: pulse 1.5s infinite; }
+</style>
+</head>
+<body>
+
+<h1>⬡ ATCS — Hardware Dashboard</h1>
+
+<div class="grid">
+
+  <div class="card">
+    <div class="card-title">⬡ Status Lampu Lalu Lintas</div>
+    <div class="lights-grid">
+      <div class="light-box" id="box-N">
+        <div class="light-dir">UTARA</div>
+        <div class="lights-row">
+          <div class="led led-base-r off" id="led-N-r"></div>
+          <div class="led led-base-y off" id="led-N-y"></div>
+          <div class="led led-base-g off" id="led-N-g"></div>
+        </div>
+        <div class="count-num" id="cnt-N">0</div>
+        <div class="count-label">kendaraan</div>
+      </div>
+      <div class="light-box" id="box-E">
+        <div class="light-dir">TIMUR</div>
+        <div class="lights-row">
+          <div class="led led-base-r off" id="led-E-r"></div>
+          <div class="led led-base-y off" id="led-E-y"></div>
+          <div class="led led-base-g off" id="led-E-g"></div>
+        </div>
+        <div class="count-num" id="cnt-E">0</div>
+        <div class="count-label">kendaraan</div>
+      </div>
+      <div class="light-box" id="box-S">
+        <div class="light-dir">SELATAN</div>
+        <div class="lights-row">
+          <div class="led led-base-r off" id="led-S-r"></div>
+          <div class="led led-base-y off" id="led-S-y"></div>
+          <div class="led led-base-g off" id="led-S-g"></div>
+        </div>
+        <div class="count-num" id="cnt-S">0</div>
+        <div class="count-label">kendaraan</div>
+      </div>
+      <div class="light-box" id="box-W">
+        <div class="light-dir">BARAT</div>
+        <div class="lights-row">
+          <div class="led led-base-r off" id="led-W-r"></div>
+          <div class="led led-base-y off" id="led-W-y"></div>
+          <div class="led led-base-g off" id="led-W-g"></div>
+        </div>
+        <div class="count-num" id="cnt-W">0</div>
+        <div class="count-label">kendaraan</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⬡ Fase Aktif</div>
+    <div class="phase-display phase-SKIP" id="phaseDisplay">N — SKIP</div>
+    <div class="progress-bg">
+      <div class="progress-fill" id="progressFill" style="width:0%;background:#8899bb;"></div>
+    </div>
+    <div style="margin-top:14px;">
+      <div class="stats-row">
+        <span class="stats-label">Arah Aktif</span>
+        <span class="stats-val" id="statDir">—</span>
+      </div>
+      <div class="stats-row">
+        <span class="stats-label">State</span>
+        <span class="stats-val" id="statState">—</span>
+      </div>
+      <div class="stats-row">
+        <span class="stats-label">Sisa Waktu</span>
+        <span class="stats-val" id="statRem">—</span>
+      </div>
+      <div class="stats-row">
+        <span class="stats-label">Total Siklus</span>
+        <span class="stats-val" id="statCycle">0</span>
+      </div>
+      <div class="stats-row">
+        <span class="stats-label">Koneksi ESP32</span>
+        <span id="statConn">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⬡ Log Sistem</div>
+    <div class="log-box" id="logBox">
+      <span class="log-info">Menunggu data...</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const DIRS = ['N','E','S','W'];
+  const MAX_DURATIONS = { GREEN: 20000, YELLOW: 2500, CLEARANCE: 2000, SKIP: 600 };
+  let lastLogCount = 0;
+  let phaseStart = Date.now();
+  let phaseDur   = 600;
+
+  function setLight(dir, state) {
+    const r = document.getElementById(`led-${dir}-r`);
+    const y = document.getElementById(`led-${dir}-y`);
+    const g = document.getElementById(`led-${dir}-g`);
+    r.className = `led led-base-r ${state === 'red'    ? 'red-on' : 'off'}`;
+    y.className = `led led-base-y ${state === 'yellow' ? 'yellow-on' : 'off'}`;
+    g.className = `led led-base-g ${state === 'green'  ? 'green-on' : 'off'}`;
+  }
+
+  function updateDashboard(data) {
+    const ph = data.phase;
+    const counts = data.counts;
+
+    DIRS.forEach(d => setLight(d, 'red'));
+
+    if (ph.state === 'GREEN')  setLight(ph.dir, 'green');
+    if (ph.state === 'YELLOW') setLight(ph.dir, 'yellow');
+
+    DIRS.forEach(d => {
+      const el = document.getElementById(`cnt-${d}`);
+      if (el) el.textContent = counts[d] ?? 0;
+    });
+
+    const pd = document.getElementById('phaseDisplay');
+    const dirNames = { N:'UTARA', E:'TIMUR', S:'SELATAN', W:'BARAT' };
+    pd.textContent = `${dirNames[ph.dir] || ph.dir} — ${ph.state}`;
+    pd.className   = `phase-display phase-${ph.state}`;
+
+    const dur = MAX_DURATIONS[ph.state] || 600;
+    const pct = Math.max(0, Math.min(100, (ph.rem_ms / dur) * 100));
+    const fill = document.getElementById('progressFill');
+    fill.style.width = pct + '%';
+    fill.style.background =
+      ph.state === 'GREEN'     ? 'var(--green)'  :
+      ph.state === 'YELLOW'    ? 'var(--yellow)' :
+      ph.state === 'CLEARANCE' ? 'var(--red)'    : '#8899bb';
+
+    document.getElementById('statDir').textContent   = dirNames[ph.dir] || ph.dir;
+    document.getElementById('statState').textContent = ph.state;
+    document.getElementById('statRem').textContent   = (ph.rem_ms / 1000).toFixed(1) + 's';
+    document.getElementById('statCycle').textContent = data.cycle ?? 0;
+
+    const connEl = document.getElementById('statConn');
+    connEl.innerHTML = data.connected
+      ? `<span class="conn-badge conn-ok"><span class="dot dot-pulse" style="background:var(--green)"></span>TERHUBUNG</span>`
+      : `<span class="conn-badge conn-err"><span class="dot" style="background:var(--red)"></span>TERPUTUS</span>`;
+
+    if (data.log && data.log.length !== lastLogCount) {
+      lastLogCount = data.log.length;
+      const box = document.getElementById('logBox');
+      box.innerHTML = data.log.slice(-30).reverse().map(l =>
+        `<div class="log-${l.level}">[${l.ts}] ${l.msg}</div>`
+      ).join('');
+    }
+  }
+
+  async function poll() {
+    try {
+      const r = await fetch('/api/state');
+      const d = await r.json();
+      updateDashboard(d);
+    } catch (e) {
+      console.warn('Poll error:', e);
+    }
+    setTimeout(poll, 500);
+  }
+
+  poll();
+</script>
+</body>
+</html>

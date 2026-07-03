@@ -1,0 +1,1679 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATCS — Adaptive Traffic Control System v3</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Variabel warna global untuk tema UI — dipakai di seluruh halaman */
+  :root {
+    --green: #00ff9d;
+    --yellow: #ffe600;
+    --red: #ff2d55;
+    --blue-glow: #00d4ff;
+    --panel-bg: rgba(15,23,42,0.95);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* Latar belakang gelap penuh layar, font utama Rajdhani */
+  body {
+    background: #060d1a;
+    font-family: 'Rajdhani', sans-serif;
+    color: #c8d8f0;
+    height: 100vh;
+    overflow: hidden;
+  }
+  canvas { display: block; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.2); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,212,255,0.4); }
+  .mono { font-family: 'Share Tech Mono', monospace; }
+  /* Kartu panel kanan — tampilan kotak dengan border tipis biru */
+  .panel-section {
+    background: linear-gradient(135deg, rgba(15,23,50,0.9) 0%, rgba(8,14,35,0.95) 100%);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .panel-section::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0,212,255,0.5), transparent);
+    border-radius: 8px 8px 0 0;
+    pointer-events: none;
+  }
+  .section-title {
+    font-size: 10px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: #00d4ff99;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: rgba(0,212,255,0.15);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #00d4ff;
+    box-shadow: 0 0 8px #00d4ff99;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.25); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    color: #00d4ff88;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 4px 6px;
+    text-align: left;
+    border-bottom: 1px solid rgba(0,212,255,0.1);
+  }
+  td {
+    padding: 5px 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.3s;
+  }
+  tr.active-row td { background: rgba(0,255,157,0.08); }
+  tr.skip-row td   { background: rgba(255,45,85,0.08); }
+  /* Badge status lampu (HIJAU/KUNING/MERAH/SKIP) di tabel ROI */
+  .status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    font-weight: 600;
+  }
+  .badge-green  { background: rgba(0,255,157,0.15); color: #00ff9d; border: 1px solid #00ff9d44; }
+  .badge-red    { background: rgba(255,45,85,0.15);  color: #ff2d55; border: 1px solid #ff2d5544; }
+  .badge-yellow { background: rgba(255,230,0,0.15);  color: #ffe600; border: 1px solid #ffe60044; }
+  .badge-skip   { background: rgba(100,100,130,0.15);color: #8899bb; border: 1px solid #8899bb44; }
+  .badge-wait   { background: rgba(0,150,255,0.12);  color: #60aaff; border: 1px solid #60aaff33; }
+  /* Kotak angka statistik (total mobil, siklus, skip, lulus) */
+  .metric-card {
+    background: rgba(0,212,255,0.05);
+    border: 1px solid rgba(0,212,255,0.1);
+    border-radius: 6px;
+    padding: 8px 10px;
+    text-align: center;
+  }
+  .metric-value {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 22px;
+    color: #00d4ff;
+    line-height: 1;
+  }
+  .metric-label { font-size: 9px; letter-spacing: 1.5px; color: #8899bb; margin-top: 3px; text-transform: uppercase; }
+  #phaseStatusBar {
+    background: rgba(0,212,255,0.05);
+    border: 1px solid rgba(0,212,255,0.12);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    min-height: 34px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #phaseTimerBar {
+    height: 3px;
+    border-radius: 2px;
+    margin-top: 6px;
+    background: rgba(0,212,255,0.1);
+    overflow: hidden;
+  }
+  #phaseTimerFill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.1s linear, background 0.3s;
+  }
+  #controlPanel { overflow-y: auto; overflow-x: hidden; }
+  .logic-row { transition: background 0.4s, color 0.4s; }
+  .logic-row.logic-active { background: rgba(0,255,157,0.12) !important; color: #00ff9d; }
+  .logic-row td { padding: 4px 6px; }
+  #canvasWrapper {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .corner-tl, .corner-tr, .corner-bl, .corner-br {
+    position: absolute; width: 16px; height: 16px;
+    pointer-events: none; z-index: 5;
+  }
+  .corner-tl { top:8px;left:8px;border-top:2px solid #00d4ff88;border-left:2px solid #00d4ff88; }
+  .corner-tr { top:8px;right:8px;border-top:2px solid #00d4ff88;border-right:2px solid #00d4ff88; }
+  .corner-bl { bottom:8px;left:8px;border-bottom:2px solid #00d4ff88;border-left:2px solid #00d4ff88; }
+  .corner-br { bottom:8px;right:8px;border-bottom:2px solid #00d4ff88;border-right:2px solid #00d4ff88; }
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50% { opacity:0.4; transform:scale(0.7); }
+  }
+  .live-dot { animation: pulse 2s infinite; }
+
+  /* Tombol kontrol (PAUSE / RESET / SERIAL) di bagian header */
+  .ctrl-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 1px solid rgba(0,212,255,0.25);
+    background: rgba(0,212,255,0.06);
+    color: #00d4ffcc;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+    user-select: none;
+  }
+  .ctrl-btn:hover {
+    background: rgba(0,212,255,0.15);
+    border-color: rgba(0,212,255,0.5);
+    color: #00d4ff;
+    box-shadow: 0 0 8px rgba(0,212,255,0.2);
+  }
+  .ctrl-btn.active {
+    background: rgba(0,255,157,0.1);
+    border-color: rgba(0,255,157,0.4);
+    color: #00ff9d;
+    box-shadow: 0 0 8px rgba(0,255,157,0.2);
+  }
+  .ctrl-btn.reset-btn:hover {
+    background: rgba(255,45,85,0.12);
+    border-color: rgba(255,45,85,0.4);
+    color: #ff2d55;
+    box-shadow: 0 0 8px rgba(255,45,85,0.2);
+  }
+  .ctrl-btn svg { flex-shrink:0; }
+
+  /* Lingkaran countdown SVG di samping progress bar fase */
+  #phaseCountdownWrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  #phaseCountdownSvg {
+    flex-shrink: 0;
+  }
+  #phaseTimerBarWrap {
+    flex: 1;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(0,212,255,0.1);
+    overflow: hidden;
+  }
+  #phaseTimerFill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.1s linear, background 0.3s;
+  }
+  #countdownText {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 7px;
+    fill: #00d4ff;
+    dominant-baseline: middle;
+    text-anchor: middle;
+  }
+
+  /* Overlay "PAUSED" di atas canvas saat simulasi dijeda */
+  #pausedOverlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(6,13,26,0.55);
+    z-index: 10;
+    pointer-events: none;
+  }
+  #pausedOverlay.visible { display: flex; }
+  #pausedOverlay span {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 22px;
+    letter-spacing: 6px;
+    color: #00d4ff88;
+    text-transform: uppercase;
+    border: 1px solid rgba(0,212,255,0.18);
+    padding: 10px 28px;
+    border-radius: 6px;
+    background: rgba(6,13,26,0.7);
+  }
+</style>
+</head>
+<body>
+
+<div style="display:flex;flex-direction:column;height:100vh;padding:10px;gap:10px;">
+
+  <!-- Header: judul ATCS, tombol PAUSE/RESET, dan jam digital -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="live-dot" style="width:8px;height:8px;border-radius:50%;background:#00ff9d;box-shadow:0 0 10px #00ff9d;"></div>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:13px;color:#00d4ff;letter-spacing:3px;">ATCS</span>
+      <span style="font-size:10px;color:#8899bb;letter-spacing:2px;">ADAPTIVE TRAFFIC CONTROL SYSTEM</span>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;">
+      <button class="ctrl-btn" id="pauseBtn" onclick="togglePause()">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+          <rect x="1.5" y="1" width="2.5" height="8" rx="1"/>
+          <rect x="6" y="1" width="2.5" height="8" rx="1"/>
+        </svg>
+        PAUSE
+      </button>
+      <button class="ctrl-btn reset-btn" onclick="resetSim()">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+          <path d="M8 2.5A4 4 0 1 0 9 5"/>
+          <polyline points="7,0.5 9,2.5 7,4.5"/>
+        </svg>
+        RESET
+      </button>
+      <div style="width:1px;height:16px;background:rgba(0,212,255,0.15);"></div>
+      <span class="mono" style="font-size:11px;color:#00d4ffaa;" id="clockDisplay">--:--:--</span>
+      <span style="font-size:9px;letter-spacing:2px;color:#00d4ff44;">v3.1.0</span>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div style="display:flex;flex:1;gap:10px;overflow:hidden;min-height:0;">
+
+    <!-- Area canvas simulasi persimpangan — dirender via JavaScript -->
+    <div id="canvasWrapper" style="position:relative;flex:1;background:rgba(6,13,26,0.8);border:1px solid rgba(0,212,255,0.15);border-radius:8px;overflow:hidden;min-width:0;">
+      <div class="corner-tl"></div><div class="corner-tr"></div>
+      <div class="corner-bl"></div><div class="corner-br"></div>
+      <canvas id="simCanvas"></canvas>
+      <div id="pausedOverlay"><span>⏸ PAUSED</span></div>
+    </div>
+
+    <!-- Panel kanan: status fase, metrik, tabel ROI, slider, tabel logika -->
+    <div id="controlPanel" style="width:290px;flex-shrink:0;display:flex;flex-direction:column;gap:0;height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;padding-bottom:10px;">
+
+      <!-- Status fase aktif: arah mana yang hijau sekarang + timer countdown -->
+      <div class="panel-section">
+        <div class="section-title">⬡ Status Fase Aktif</div>
+        <div id="phaseStatusBar">
+          <span style="color:#8899bb;font-size:11px;">Memulai sistem...</span>
+        </div>
+        <div id="phaseCountdownWrap">
+          <svg id="phaseCountdownSvg" width="28" height="28" viewBox="0 0 28 28">
+            <circle cx="14" cy="14" r="11" fill="none" stroke="rgba(0,212,255,0.1)" stroke-width="2.5"/>
+            <circle id="countdownRing" cx="14" cy="14" r="11" fill="none"
+              stroke="#00ff9d" stroke-width="2.5"
+              stroke-dasharray="69.12" stroke-dashoffset="0"
+              stroke-linecap="round"
+              transform="rotate(-90 14 14)"
+              style="transition: stroke-dashoffset 0.1s linear, stroke 0.3s;"/>
+            <text id="countdownText" x="14" y="14.5">–</text>
+          </svg>
+          <div id="phaseTimerBarWrap">
+            <div id="phaseTimerFill" style="width:0%;background:#00ff9d;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metrik global: total kendaraan, jumlah siklus, fase dilewati, kendaraan lolos -->
+      <div class="panel-section">
+        <div class="section-title">⬡ Metrik Global</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="metric-card">
+            <div class="metric-value" id="metTotalCars">0</div>
+            <div class="metric-label">Total Mobil</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="metCycle">0</div>
+            <div class="metric-label">Siklus</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="metSkipped">0</div>
+            <div class="metric-label">Skip Fase</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="metPassed">0</div>
+            <div class="metric-label">Lulus Sinyal</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabel deteksi ROI per arah: jumlah kendaraan dalam zona kamera dan statusnya -->
+      <div class="panel-section">
+        <div class="section-title">⬡ Deteksi Kamera ROI</div>
+        <table>
+          <thead>
+            <tr><th>Arah</th><th>ROI</th><th>Total</th><th>Durasi</th><th>Status</th></tr>
+          </thead>
+          <tbody id="roiTable">
+            <tr id="roiRow_N" class="logic-row">
+              <td><span style="color:#00d4ff;font-weight:600;">UTARA</span></td>
+              <td class="mono roiCount_N">0</td>
+              <td class="mono roiTotal_N" style="color:#ffe60099;">0</td>
+              <td class="mono roiDur_N">-</td>
+              <td class="roiStatus_N"><span class="status-badge badge-wait">WAIT</span></td>
+            </tr>
+            <tr id="roiRow_E" class="logic-row">
+              <td><span style="color:#00d4ff;font-weight:600;">TIMUR</span></td>
+              <td class="mono roiCount_E">0</td>
+              <td class="mono roiTotal_E" style="color:#ffe60099;">0</td>
+              <td class="mono roiDur_E">-</td>
+              <td class="roiStatus_E"><span class="status-badge badge-wait">WAIT</span></td>
+            </tr>
+            <tr id="roiRow_S" class="logic-row">
+              <td><span style="color:#00d4ff;font-weight:600;">SELATAN</span></td>
+              <td class="mono roiCount_S">0</td>
+              <td class="mono roiTotal_S" style="color:#ffe60099;">0</td>
+              <td class="mono roiDur_S">-</td>
+              <td class="roiStatus_S"><span class="status-badge badge-wait">WAIT</span></td>
+            </tr>
+            <tr id="roiRow_W" class="logic-row">
+              <td><span style="color:#00d4ff;font-weight:600;">BARAT</span></td>
+              <td class="mono roiCount_W">0</td>
+              <td class="mono roiTotal_W" style="color:#ffe60099;">0</td>
+              <td class="mono roiDur_W">-</td>
+              <td class="roiStatus_W"><span class="status-badge badge-wait">WAIT</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:6px;font-size:9px;color:#8899bb;letter-spacing:0.5px;">ROI = dalam zona deteksi &nbsp;|&nbsp; Total = seluruh antrian</div>
+      </div>
+
+      <!-- Slider intensitas kendaraan dan kecepatan simulasi -->
+      <div class="panel-section">
+        <div class="section-title">⬡ Parameter Simulasi</div>
+        <div style="margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="font-size:12px;">Intensitas Kendaraan</span>
+            <span class="mono" id="intensityVal" style="color:#00d4ff;font-size:12px;">5</span>
+          </div>
+          <input type="range" id="intensitySlider" min="1" max="10" value="5">
+          <div style="display:flex;justify-content:space-between;margin-top:3px;">
+            <span style="font-size:9px;color:#8899bb;">SEPI</span>
+            <span style="font-size:9px;color:#8899bb;">PADAT</span>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="font-size:12px;">Kecepatan Simulasi</span>
+            <span class="mono" id="speedVal" style="color:#00d4ff;font-size:12px;">0.5x</span>
+          </div>
+          <input type="range" id="speedSlider" min="1" max="4" value="1" step="1">
+          <div style="display:flex;justify-content:space-between;margin-top:3px;">
+            <span style="font-size:9px;color:#8899bb;">LAMBAT</span>
+            <span style="font-size:9px;color:#8899bb;">CEPAT</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabel logika durasi hijau berdasarkan jumlah kendaraan di ROI -->
+      <div class="panel-section">
+        <div class="section-title">⬡ Tabel Logika Durasi</div>
+        <table>
+          <thead>
+            <tr><th>Kendaraan</th><th>Kategori</th><th>Durasi</th></tr>
+          </thead>
+          <tbody>
+            <tr id="logicRow_0" class="logic-row"><td>0</td><td style="color:#666;">Kosong</td><td class="mono">0 dtk</td></tr>
+            <tr id="logicRow_1" class="logic-row"><td>1–2</td><td>Sangat Cepat</td><td class="mono">5 dtk</td></tr>
+            <tr id="logicRow_2" class="logic-row"><td>3–5</td><td>Cepat</td><td class="mono">10 dtk</td></tr>
+            <tr id="logicRow_3" class="logic-row"><td>6–9</td><td>Sedang</td><td class="mono">15 dtk</td></tr>
+            <tr id="logicRow_4" class="logic-row"><td>≥10</td><td>Lama</td><td class="mono">20 dtk</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div><!-- end controlPanel -->
+  </div><!-- end main content -->
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  CANVAS SETUP
+// ═══════════════════════════════════════════════════════════════════
+// Inisialisasi canvas dan context 2D untuk menggambar simulasi
+const canvas = document.getElementById('simCanvas');
+const ctx    = canvas.getContext('2d');
+
+// Sesuaikan ukuran canvas dengan wrapper saat halaman dimuat atau di-resize
+function resizeCanvas() {
+  const wrapper  = document.getElementById('canvasWrapper');
+  canvas.width  = wrapper.clientWidth;
+  canvas.height = wrapper.clientHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// ═══════════════════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════════════════
+// Arah persimpangan dan nama tampilan
+const DIRS      = ['N','E','S','W'];
+const DIR_NAMES = { N:'UTARA', E:'TIMUR', S:'SELATAN', W:'BARAT' };
+
+// Ukuran visual kendaraan dalam piksel
+const CAR_W   = 8;   // half-width of car body
+const CAR_H   = 13;  // half-length of car body
+// FIX #3: all cars use the same base speed; no random variance that causes stacking
+// Kecepatan dasar semua kendaraan — konstan agar tidak saling tumpuk
+const BASE_SPD = 60; // px/sec at simSpeed=1
+
+// Jarak aman antar kendaraan saat mengantri
+const FOLLOW_GAP = CAR_H * 2 + 8; // gap between cars (front-to-rear)
+
+const CAR_COLORS = [
+  '#4fc3f7','#81c784','#ffb74d','#f48fb1',
+  '#ce93d8','#80cbc4','#fff176','#ef9a9a',
+  '#90caf9','#a5d6a7','#ff8a65','#4db6ac',
+];
+
+// ═══════════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════════
+// Variabel global simulasi: kecepatan, intensitas spawn, daftar kendaraan, counter
+let simSpeed       = 0.5; // matches speedSlider default value=1 → speedMap[1]=0.5
+let spawnIntensity = 5;
+let cars           = [];
+let carIdCounter   = 0;
+let cycleCount     = 0;  // jumlah total siklus fase yang sudah berjalan
+let skipCount      = 0;  // jumlah fase yang dilewati karena ROI kosong
+let passedCount    = 0;  // jumlah kendaraan yang berhasil melewati persimpangan
+
+// State mesin fase: green → yellow → clearance → (next dir)
+let phaseState        = 'green'; // 'green'|'yellow'|'clearance'|'skip'
+let phaseTimer        = 0;
+let phaseMaxTimer     = 0;
+let greenDuration     = 10;
+const YELLOW_DUR      = 2.5;   // real seconds
+const CLEARANCE_DUR   = 2.0;   // all-red jeda aman antar fase (real seconds)
+let phaseDir          = 'N';
+let trafficLights     = { N:'red', E:'red', S:'red', W:'red' };
+let roiCounts         = { N:0, E:0, S:0, W:0 };
+// Anti-starvation: track how long each dir has been waiting (real seconds)
+// Resets to 0 when that dir gets green. Increases over time while waiting.
+let waitTime          = { N:0, E:0, S:0, W:0 };
+// Max wait before starvation boost kicks in (real seconds)
+const STARVATION_CAP  = 60;
+
+// Timestamp (performance.now()) when first car entered ROI for each dir
+// Resets when dir gets served. Used for tiebreak: who waited longest at ROI entry.
+let roiFirstEntry     = { N:null, E:null, S:null, W:null };
+// Last ROI count seen per dir — to detect new arrivals
+let roiLastCount      = { N:0, E:0, S:0, W:0 };
+// Total cars in queue INCLUDING outside ROI
+let totalQueueCounts  = { N:0, E:0, S:0, W:0 };
+
+// ═══════════════════════════════════════════════════════════════════
+//  GEOMETRY
+// ═══════════════════════════════════════════════════════════════════
+// Menghitung koordinat dan ukuran elemen jalan berdasarkan ukuran canvas saat ini
+function getGeo() {
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  const roadW = Math.min(W, H) * 0.16;   // total road width
+  const laneW = roadW / 2;               // each lane width
+  const intR  = roadW;                   // intersection half-size
+  // FIX #2: ROI long enough to contain 12+ cars
+  const roiLen = CAR_H * 2 * 14 + 20;   // room for ~14 cars in queue
+  const roiStart = intR;                  // distance from center to near ROI edge
+  return { W, H, cx, cy, roadW, laneW, intR, roiLen, roiStart };
+}
+
+// Area deteksi kamera (ROI) per arah — kotak zona antrian kendaraan
+function getRoi(dir) {
+  const { cx, cy, roadW, roiStart, roiLen } = getGeo();
+  const hw = roadW / 2;
+  if (dir === 'N') return { x: cx - hw,            y: cy - roiStart - roiLen, w: roadW, h: roiLen };
+  if (dir === 'S') return { x: cx - hw,            y: cy + roiStart,          w: roadW, h: roiLen };
+  if (dir === 'W') return { x: cx - roiStart - roiLen, y: cy - hw,            w: roiLen, h: roadW };
+  if (dir === 'E') return { x: cx + roiStart,      y: cy - hw,                w: roiLen, h: roadW };
+}
+
+// Posisi garis stop tiap arah — kendaraan berhenti di sini saat lampu merah
+function getStopLine(dir) {
+  const { cx, cy, intR } = getGeo();
+  if (dir === 'N') return cy - intR;
+  if (dir === 'S') return cy + intR;
+  if (dir === 'E') return cx + intR;
+  if (dir === 'W') return cx - intR;
+}
+
+// Posisi tengah tiap lajur (0 = dalam, 1 = luar) untuk spawn kendaraan
+// FIX #5: Two incoming lane centers per direction (left lane and right lane)
+// Lane 0 = right lane relative to direction of travel (closer to center line)
+// Lane 1 = left lane  relative to direction of travel (closer to road edge)
+function getLaneCenter(dir, lane) {
+  // lane: 0 or 1
+  const { cx, cy, laneW } = getGeo();
+  const q0 = laneW * 0.28; // center of inner lane from road centerline
+  const q1 = laneW * 0.78; // center of outer lane from road centerline
+  if (dir === 'N') return lane === 0 ? cx + q0 : cx + q1;
+  if (dir === 'S') return lane === 0 ? cx - q0 : cx - q1;
+  if (dir === 'E') return lane === 0 ? cy + q0 : cy + q1;
+  if (dir === 'W') return lane === 0 ? cy - q0 : cy - q1;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SPAWN CAR — FIX #3: constant speed, FIX #5: dual lanes
+// ═══════════════════════════════════════════════════════════════════
+// Interval spawn kendaraan — semakin tinggi intensitas, makin sering muncul
+let spawnTimer = 0;
+
+function getSpawnInterval() {
+  // intensity 1 → 4.0s gap, intensity 10 → 0.4s gap (very aggressive)
+  return 4.0 / spawnIntensity;
+}
+
+// Membuat objek kendaraan baru di luar batas canvas menuju persimpangan
+function spawnCar(dir) {
+  const { W, H } = getGeo();
+  const lane = Math.random() < 0.5 ? 0 : 1;
+  const lc   = getLaneCenter(dir, lane);
+  const spd  = BASE_SPD; // FIX #3: constant speed — no stacking due to speed diff
+
+  let x, y, vx, vy;
+  if (dir === 'N') { x = lc;       y = -CAR_H - 5;   vx = 0;    vy =  spd; }
+  if (dir === 'S') { x = lc;       y = H + CAR_H + 5; vx = 0;    vy = -spd; }
+  if (dir === 'E') { x = W+CAR_H+5; y = lc;            vx = -spd; vy = 0;   }
+  if (dir === 'W') { x = -CAR_H-5;  y = lc;            vx =  spd; vy = 0;   }
+
+  const turn = 'straight'; // turns disabled — all cars go straight
+
+  return {
+    id: carIdCounter++,
+    dir,
+    lane,   // which lane (0 or 1)
+    x, y, vx, vy,
+    baseSpd: spd,
+    color: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)],
+    turn,
+    state: 'approaching', // approaching | waiting | crossing | turning | exiting
+    crossedStopLine: false, // FIX #6: true only after physically crossing
+    arcCx: 0, arcCy: 0, arcR: 0,
+    arcStartAngle: 0, arcTotal: 0, arcProgress: 0,
+    arcDir: 1,
+    exitDir: dir,
+    angle: dir === 'N' ? 0 : dir === 'S' ? Math.PI : dir === 'E' ? -Math.PI/2 : Math.PI/2,
+    alpha: 1,
+    passed: false,
+  };
+}
+
+// Dipanggil tiap frame — spawn kendaraan baru jika timer habis
+function tickSpawn(realDt) {
+  spawnTimer -= realDt;
+  if (spawnTimer <= 0) {
+    const dir = DIRS[Math.floor(Math.random() * 4)];
+    const dirCars = cars.filter(c => c.dir === dir && c.state !== 'exiting').length;
+    if (dirCars < 40) cars.push(spawnCar(dir)); // raised cap so ROI fills beyond 14
+    spawnTimer = getSpawnInterval() * (0.75 + Math.random() * 0.5);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  COLLISION AVOIDANCE — FIX #1 & #3: same-lane, same-dir, constant spacing
+// ═══════════════════════════════════════════════════════════════════
+// Menghitung posisi ujung depan kendaraan sesuai arah geraknya
+function getCarFront(car) {
+  // Front = the edge leading the direction of travel
+  // N: traveling DOWN (+y), front is the BOTTOM edge  → car.y + CAR_H
+  // S: traveling UP  (-y), front is the TOP    edge  → car.y - CAR_H
+  // E: traveling LEFT(-x), front is the LEFT   edge  → car.x - CAR_H
+  // W: traveling RIGHT(+x),front is the RIGHT  edge  → car.x + CAR_H
+  if (car.dir === 'N') return car.y + CAR_H;
+  if (car.dir === 'S') return car.y - CAR_H;
+  if (car.dir === 'E') return car.x - CAR_H;
+  if (car.dir === 'W') return car.x + CAR_H;
+}
+
+function getCarRear(car) {
+  if (car.dir === 'N') return car.y - CAR_H;
+  if (car.dir === 'S') return car.y + CAR_H;
+  if (car.dir === 'E') return car.x + CAR_H;
+  if (car.dir === 'W') return car.x - CAR_H;
+}
+
+// Cek apakah ada kendaraan di depan dalam lajur yang sama — cegah tumpukan
+function carAheadInLane(car) {
+  if (car.state === 'turning' || car.state === 'crossing') return false;
+  const needed = CAR_H * 2 + FOLLOW_GAP;
+  let minGap = Infinity;
+  for (const other of cars) {
+    if (other.id === car.id) continue;
+    if (other.state === 'exiting' || other.state === 'turning') continue;
+    if (other.dir !== car.dir) continue;
+    if (other.lane !== car.lane) continue;
+    // 'ahead' means closer to the intersection in the direction of travel
+    // N travels toward smaller y, S toward larger y, E toward smaller x, W toward larger x
+    let gap = 0;
+    switch (car.dir) {
+      case 'N': gap = other.y - car.y; break; // N moves down (+y); ahead = higher y
+      case 'S': gap = car.y - other.y; break; // S moves up  (-y); ahead = lower  y
+      case 'E': gap = car.x - other.x; break; // E moves left(-x); ahead = lower  x
+      case 'W': gap = other.x - car.x; break; // W moves right(+x);ahead = higher x
+    }
+    if (gap > 0 && gap < needed * 2) {
+      minGap = Math.min(minGap, gap);
+    }
+  }
+  return minGap < needed;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  TURN ARC — FIX #4: corrected pivot math for all 4 dirs & 2 turns
+// ═══════════════════════════════════════════════════════════════════
+function initTurnArc(car) {
+  const { laneW } = getGeo();
+  const isLeft  = car.turn === 'left';
+  const isRight = car.turn === 'right';
+
+  const dirIdx  = DIRS.indexOf(car.dir);
+  const exitIdx = isLeft  ? (dirIdx + 3) % 4
+                : isRight ? (dirIdx + 1) % 4
+                :            dirIdx;
+  car.exitDir = DIRS[exitIdx];
+
+  // Radius: tight for right turns, wide for left turns
+  const R = isRight ? laneW * 0.7 : laneW * 1.35;
+  car.arcR = R;
+
+  // Pivot placement rule:
+  //   The pivot is placed perpendicular to the direction of travel, at distance R.
+  //   Right turn: pivot is to the RIGHT of the car's nose.
+  //   Left  turn: pivot is to the LEFT  of the car's nose.
+  //
+  // Canvas axes: +x = right, +y = DOWN.
+  // Directions: N=moving down(+y), S=moving up(-y), E=moving left(-x), W=moving right(+x)
+  //
+  // For each case we derive:
+  //   arcCx, arcCy  — pivot position
+  //   arcStartAngle — angle FROM pivot TO car position (atan2 convention)
+  //   arcDir        — +1 = clockwise (canvas), -1 = counter-clockwise
+
+  if (car.dir === 'N') {
+    // Moving DOWN (+y). Right = East side (+x), Left = West side (-x)
+    if (isRight) {
+      // Turn East: pivot to the right (East, +x)
+      car.arcCx = car.x + R; car.arcCy = car.y;
+      car.arcStartAngle = Math.PI;   // car is west of pivot
+      car.arcDir = 1;                // CW: west → north (up) — but we want down→right, so CW in canvas
+    } else {
+      // Turn West: pivot to the left (West, -x)
+      car.arcCx = car.x - R; car.arcCy = car.y;
+      car.arcStartAngle = 0;         // car is east of pivot
+      car.arcDir = -1;               // CCW in canvas: east → north (down→left)
+    }
+  } else if (car.dir === 'S') {
+    // Moving UP (-y). Right = West side (-x), Left = East side (+x)
+    if (isRight) {
+      // Turn West: pivot to the right (West, -x)
+      car.arcCx = car.x - R; car.arcCy = car.y;
+      car.arcStartAngle = 0;         // car is east of pivot
+      car.arcDir = 1;                // CW
+    } else {
+      // Turn East: pivot to the left (East, +x)
+      car.arcCx = car.x + R; car.arcCy = car.y;
+      car.arcStartAngle = Math.PI;   // car is west of pivot
+      car.arcDir = -1;               // CCW
+    }
+  } else if (car.dir === 'E') {
+    // Moving LEFT (-x). Right = North side (-y), Left = South side (+y)
+    if (isRight) {
+      // Turn North: pivot up (-y)
+      car.arcCx = car.x; car.arcCy = car.y - R;
+      car.arcStartAngle = Math.PI / 2;   // car is below pivot
+      car.arcDir = -1;                    // CCW
+    } else {
+      // Turn South: pivot down (+y)
+      car.arcCx = car.x; car.arcCy = car.y + R;
+      car.arcStartAngle = -Math.PI / 2;  // car is above pivot
+      car.arcDir = 1;                     // CW
+    }
+  } else { // dir === 'W'
+    // Moving RIGHT (+x). Right = South side (+y), Left = North side (-y)
+    if (isRight) {
+      // Turn South: pivot down (+y)
+      car.arcCx = car.x; car.arcCy = car.y + R;
+      car.arcStartAngle = -Math.PI / 2;  // car is above pivot
+      car.arcDir = -1;                    // CCW
+    } else {
+      // Turn North: pivot up (-y)
+      car.arcCx = car.x; car.arcCy = car.y - R;
+      car.arcStartAngle = Math.PI / 2;   // car is below pivot
+      car.arcDir = 1;                     // CW
+    }
+  }
+
+  car.arcTotal    = Math.PI / 2;
+  car.arcProgress = 0;
+  car.state       = 'turning';
+}
+
+//  UPDATE CARS 
+// Memperbarui posisi, state, dan logika setiap kendaraan tiap frame
+function updateCars(realDt) {
+  const { cx, cy, W, H, laneW, intR } = getGeo();
+  const dt = realDt * simSpeed;
+
+  const newRoi = { N:0, E:0, S:0, W:0 };
+
+  cars.forEach(car => {
+    // ── EXITING ──
+    if (car.state === 'exiting') {
+      car.x += car.vx * dt;
+      car.y += car.vy * dt;
+      car.alpha = Math.max(0, car.alpha - realDt * 2.5);
+      return;
+    }
+
+    // ── ROI count — capped at ROI_MAX=14 untuk display ──
+    if (car.state !== 'crossing' && car.state !== 'turning') {
+      const roi = getRoi(car.dir);
+      if (carInROI(car, roi) && newRoi[car.dir] < 14) newRoi[car.dir]++;
+    }
+
+    // ── TURNING ARC (disabled — all cars go straight) ──
+
+    // ── APPROACHING / WAITING / CROSSING ──
+    const light   = trafficLights[car.dir];
+    // FIX #6: only green allows crossing; yellow means STOP if not yet committed
+    const canGo   = light === 'green';
+    const stopPos = getStopLine(car.dir);
+
+    // Determine distance to stop line (positive = still approaching, not yet reached)
+    let distToStop = 0;
+    // N moves DOWN (+y): stop line is BELOW spawn, car approaches it as y increases
+    if (car.dir === 'N') distToStop = stopPos - car.y; // positive when car.y < stopPos (above stop)
+    // S moves UP  (-y): stop line is ABOVE spawn (smaller y), car approaches as y decreases
+    if (car.dir === 'S') distToStop = car.y - stopPos; // positive when car.y > stopPos (below stop)
+    // E moves LEFT(-x): stop line is to the LEFT of spawn (smaller x), car approaches as x decreases
+    if (car.dir === 'E') distToStop = car.x - stopPos; // positive when car.x > stopPos (right of stop)
+    // W moves RIGHT(+x): stop line is to the RIGHT of spawn (larger x), car approaches as x increases
+    if (car.dir === 'W') distToStop = stopPos - car.x; // positive when car.x < stopPos (left of stop)
+
+    // FIX #4: set crossedStopLine when car reaches/passes the stop line on green
+    if (!car.crossedStopLine && canGo && distToStop <= CAR_H) {
+      car.crossedStopLine = true; // committed to cross
+    }
+
+    const shouldStop = !car.crossedStopLine && !canGo && distToStop <= CAR_H + 6;
+    // Only block by car-ahead if not yet committed to intersection
+    const blockedByCarAhead = !car.crossedStopLine &&
+      (car.state === 'approaching' || car.state === 'waiting') &&
+      carAheadInLane(car);
+
+    if (shouldStop || (blockedByCarAhead && !car.crossedStopLine)) {
+      car.state = 'waiting';
+      return;
+    }
+
+    // Resume if previously waiting
+    if (car.state === 'waiting') {
+      const free = (canGo || car.crossedStopLine) && !blockedByCarAhead;
+      if (!free) return;
+      car.state = 'approaching';
+    }
+
+    // Move straight
+    car.x += car.vx * dt;
+    car.y += car.vy * dt;
+
+    // Mark passed when crossing stop line with green
+    if (!car.passed && car.crossedStopLine) {
+      car.passed = true;
+      passedCount++;
+    }
+
+    // Inside intersection → mark as crossing
+    const inInt = car.x > cx - intR && car.x < cx + intR &&
+                  car.y > cy - intR && car.y < cy + intR;
+
+    if (inInt || car.crossedStopLine) {
+      car.state = 'crossing';
+    }
+
+    // Off-canvas → exiting
+    const marg = 100;
+    if (car.x < -marg || car.x > W + marg || car.y < -marg || car.y > H + marg) {
+      car.state = 'exiting';
+    }
+  });
+
+  // Remove fully faded cars
+  cars = cars.filter(c => !(c.state === 'exiting' && c.alpha <= 0));
+  roiCounts = newRoi;
+
+  // --- FIX 1 & 2: Update totalQueueCounts (all waiting cars, inside+outside ROI)
+  //     and track timestamps when ROI count increases (for tiebreak)
+  const now = performance.now();
+  DIRS.forEach(dir => {
+    // Total queue = all non-crossing/non-exiting cars on this approach
+    totalQueueCounts[dir] = cars.filter(c =>
+      c.dir === dir &&
+      c.state !== 'exiting' &&
+      c.state !== 'crossing' &&
+      c.state !== 'turning'
+    ).length;
+
+    // Track first ROI entry timestamp for tiebreak
+    const cnt = roiCounts[dir];
+    if (cnt > 0) {
+      // Catat waktu pertama kali ada kendaraan di ROI (setelah sebelumnya kosong atau baru reset)
+      if (roiFirstEntry[dir] === null) roiFirstEntry[dir] = now;
+    } else {
+      roiFirstEntry[dir] = null; // ROI kosong, reset
+    }
+    roiLastCount[dir] = cnt;
+
+    // Accumulate wait time for non-active dirs (per real frame)
+    // waitTime updated in tickPhase instead (per realDt)
+  });
+}
+
+//  ROI CHECK
+// Mengecek apakah kendaraan berada dalam kotak zona deteksi kamera
+function carInROI(car, roi) {
+  const hw = CAR_W / 2 + 1, hl = CAR_H / 2 + 1;
+  return (car.x + hw > roi.x) && (car.x - hw < roi.x + roi.w) &&
+         (car.y + hl > roi.y) && (car.y - hl < roi.y + roi.h);
+}
+
+//  PHASE MACHINE
+// Menentukan durasi lampu hijau berdasarkan jumlah kendaraan di ROI (logika ATCS)
+function getGreenDuration(count) {
+  if (count === 0)  return 0;
+  if (count <= 2)   return 5;
+  if (count <= 5)   return 10;
+  if (count <= 9)   return 15;
+  return 20;
+}
+function getDurationLabel(count) {
+  if (count === 0) return '0 dtk';
+  if (count <= 2)  return '5 dtk';
+  if (count <= 5)  return '10 dtk';
+  if (count <= 9)  return '15 dtk';
+  return '20 dtk';
+}
+function getLogicRowId(count) {
+  if (count === 0) return 'logicRow_0';
+  if (count <= 2)  return 'logicRow_1';
+  if (count <= 5)  return 'logicRow_2';
+  if (count <= 9)  return 'logicRow_3';
+  return 'logicRow_4';
+}
+
+// ── SNAPSHOT ROI: kendaraan waiting/approaching dalam zona deteksi, max 14 ──
+const ROI_MAX = 14;
+function snapshotROI() {
+  const snap = { N:0, E:0, S:0, W:0 };
+  cars.forEach(car => {
+    if (car.state === 'exiting' || car.state === 'crossing' || car.state === 'turning') return;
+    const roi = getRoi(car.dir);
+    if (carInROI(car, roi) && snap[car.dir] < ROI_MAX) snap[car.dir]++;
+  });
+  return snap;
+}
+
+// ── SNAPSHOT TOTAL: semua kendaraan waiting/approaching (termasuk luar ROI) ──
+// INI yang dipakai sebagai basis keputusan utama, bukan ROI fisik semata.
+// Alasan: kendaraan bisa jadi state 'crossing' sebentar saat stop line dilewati
+// tapi masih dalam antrian efektif — totalQueue lebih akurat.
+function snapshotTotal() {
+  const snap = { N:0, E:0, S:0, W:0 };
+  cars.forEach(car => {
+    if (car.state === 'exiting' || car.state === 'crossing' || car.state === 'turning') return;
+    snap[car.dir]++;
+  });
+  return snap;
+}
+
+// ── SNAPSHOT QUEUE: semua kendaraan termasuk yang belum crossing (waiting+approaching) ──
+// Lebih inklusif dari snapshotTotal — menghitung approaching cars di luar ROI juga.
+function snapshotQueue() {
+  const snap = { N:0, E:0, S:0, W:0 };
+  cars.forEach(car => {
+    if (car.state === 'exiting') return;
+    if (car.state === 'crossing' || car.state === 'turning') return;
+    snap[car.dir]++;
+  });
+  return snap;
+}
+
+// ── PICK NEXT DIR ──
+//
+// Algoritma pemilihan arah berikutnya yang mendapat lampu hijau
+// Prioritas ketat:
+//   Tier 1: ROI terbanyak (max 14, kendaraan dalam zona deteksi, paling akurat)
+//   Tier 2: Jika ROI sama → total antrian terbanyak (ROI + luar ROI)
+//   Tier 3: Jika masih sama → siapa PERTAMA masuk ROI (roiFirstEntry terkecil)
+//   Tier 4: Jika masih sama → waitTime terlama (anti-starvation)
+//   Tier 5: Fallback
+//
+function pickNextDir(snap, snapQueue) {
+  function filterBest(dirs, valueFn) {
+    let best = -Infinity;
+    dirs.forEach(d => { const v = valueFn(d); if (v > best) best = v; });
+    return dirs.filter(d => valueFn(d) === best);
+  }
+
+  // Tier 1: ROI terbanyak
+  let candidates = filterBest(DIRS, d => snap[d] || 0);
+  if (candidates.length === 1) return candidates[0];
+
+  // Tier 2: total antrian terbanyak (termasuk luar ROI)
+  candidates = filterBest(candidates, d => snapQueue[d] || 0);
+  if (candidates.length === 1) return candidates[0];
+
+  // Tier 3: roiFirstEntry — siapa lebih dulu punya kendaraan di ROI
+  const withEntry = candidates.filter(d => roiFirstEntry[d] !== null);
+  if (withEntry.length > 0) {
+    return withEntry.reduce((best, d) =>
+      roiFirstEntry[d] < roiFirstEntry[best] ? d : best
+    );
+  }
+
+  // Tier 4: waitTime terlama
+  candidates = filterBest(candidates, d => waitTime[d] || 0);
+  if (candidates.length === 1) return candidates[0];
+
+  return candidates[0];
+}
+
+// Inisialisasi fase baru: pilih arah berikutnya, atur lampu, set durasi hijau
+function initPhase() {
+  const snap      = snapshotROI();    // ROI fisik, capped 14
+  const snapQueue = snapshotQueue();  // semua antrian termasuk luar ROI
+
+  roiCounts = { ...snap };
+
+  phaseDir = pickNextDir(snap, snapQueue);
+
+  // Reset wait time for chosen dir; keep accumulating for others
+  waitTime[phaseDir] = 0;
+  // Reset first-entry timestamp so next cycle starts fresh for this dir
+  roiFirstEntry[phaseDir] = null;
+
+  const count = snap[phaseDir];
+  greenDuration = getGreenDuration(count);
+
+  DIRS.forEach(d => trafficLights[d] = 'red');
+
+  if (greenDuration === 0) {
+    const outsideCount = (snapQueue[phaseDir] || 0) - (snap[phaseDir] || 0);
+    if (outsideCount > 0) {
+      greenDuration           = 5;
+      phaseState              = 'green';
+      phaseTimer              = greenDuration;
+      phaseMaxTimer           = greenDuration;
+      trafficLights[phaseDir] = 'green';
+      updatePhaseStatus('green', phaseDir, outsideCount);
+    } else {
+      phaseState    = 'skip';
+      phaseTimer    = 0.6;
+      phaseMaxTimer = phaseTimer;
+      skipCount++;
+      updatePhaseStatus('skip', phaseDir, count);
+    }
+  } else {
+    phaseState              = 'green';
+    phaseTimer              = greenDuration;
+    phaseMaxTimer           = greenDuration;
+    trafficLights[phaseDir] = 'green';
+    updatePhaseStatus('green', phaseDir, count);
+  }
+
+  highlightLogicRow(getLogicRowId(count));
+  updateROITable();
+  cycleCount++;
+}
+
+function advancePhase() {
+  initPhase();
+}
+
+// Mesin waktu fase — mengatur transisi green→yellow→clearance tiap frame
+function tickPhase(realDt) {
+  const dt = realDt * simSpeed;
+  phaseTimer -= dt;
+
+  // Accumulate real wait time hanya untuk dir yang SEDANG tidak hijau
+  DIRS.forEach(d => {
+    if (!(d === phaseDir && phaseState === 'green')) {
+      waitTime[d] = Math.min((waitTime[d] || 0) + realDt, STARVATION_CAP);
+    }
+  });
+
+  const fill   = Math.max(0, phaseTimer / phaseMaxTimer) * 100;
+  const fillEl = document.getElementById('phaseTimerFill');
+  fillEl.style.width      = fill + '%';
+  fillEl.style.background = phaseState === 'green'     ? '#00ff9d'
+                          : phaseState === 'yellow'    ? '#ffe600'
+                          : phaseState === 'clearance' ? '#ff2d55'
+                          :                              '#8899bb';
+
+  if (phaseState === 'skip') {
+    if (phaseTimer <= 0) advancePhase();
+    return;
+  }
+  if (phaseState === 'green') {
+    if (phaseTimer <= 0) {
+      phaseState              = 'yellow';
+      phaseTimer              = YELLOW_DUR;
+      phaseMaxTimer           = YELLOW_DUR;
+      trafficLights[phaseDir] = 'yellow';
+      updatePhaseStatus('yellow', phaseDir, roiCounts[phaseDir]);
+    }
+    return;
+  }
+  if (phaseState === 'yellow') {
+    if (phaseTimer <= 0) {
+      // Setelah kuning → all-red clearance agar kendaraan ruas sebelumnya lolos dulu
+      trafficLights[phaseDir] = 'red';
+      phaseState    = 'clearance';
+      phaseTimer    = CLEARANCE_DUR;
+      phaseMaxTimer = CLEARANCE_DUR;
+      // Tampilkan status clearance di panel
+      const bar = document.getElementById('phaseStatusBar');
+      bar.innerHTML = `<span class="status-badge badge-red">ALL-RED</span><span style="color:#ff6680;font-size:12px;">Jeda keamanan — menunggu persimpangan bersih...</span>`;
+    }
+    return;
+  }
+  if (phaseState === 'clearance') {
+    if (phaseTimer <= 0) {
+      advancePhase(); // sekarang aman untuk hijau berikutnya
+    }
+    return;
+  }
+}
+
+//  DRAWING
+// Helper menggambar kotak dengan sudut membulat menggunakan canvas API
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y);
+  ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r);
+  ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h);
+  ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r);
+  ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+}
+
+// Menggambar jalan, persimpangan, garis stop, zebra cross, dan label arah
+function drawRoad() {
+  const { W, H, cx, cy, roadW, laneW, intR } = getGeo();
+
+  // Background
+  ctx.fillStyle = '#070e1c';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(0,212,255,0.03)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  // Roads
+  const roadCol = '#111827';
+  ctx.fillStyle = roadCol;
+  ctx.fillRect(cx - roadW/2, 0,          roadW, cy - intR);          // N
+  ctx.fillRect(cx - roadW/2, cy + intR,  roadW, H - cy - intR);      // S
+  ctx.fillRect(0,            cy - roadW/2, cx - intR, roadW);        // W
+  ctx.fillRect(cx + intR,    cy - roadW/2, W - cx - intR, roadW);    // E
+  ctx.fillRect(cx - intR,    cy - intR,  intR*2, intR*2);            // intersection
+
+  // Edges
+  ctx.strokeStyle = '#374151';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx-roadW/2,0); ctx.lineTo(cx-roadW/2,cy-intR);
+  ctx.moveTo(cx+roadW/2,0); ctx.lineTo(cx+roadW/2,cy-intR);
+  ctx.moveTo(cx-roadW/2,cy+intR); ctx.lineTo(cx-roadW/2,H);
+  ctx.moveTo(cx+roadW/2,cy+intR); ctx.lineTo(cx+roadW/2,H);
+  ctx.moveTo(0,cy-roadW/2); ctx.lineTo(cx-intR,cy-roadW/2);
+  ctx.moveTo(0,cy+roadW/2); ctx.lineTo(cx-intR,cy+roadW/2);
+  ctx.moveTo(cx+intR,cy-roadW/2); ctx.lineTo(W,cy-roadW/2);
+  ctx.moveTo(cx+intR,cy+roadW/2); ctx.lineTo(W,cy+roadW/2);
+  ctx.stroke();
+
+  // Lane dividers (dashed) — center line of each road
+  ctx.strokeStyle = '#2d3748';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([10, 10]);
+  ctx.beginPath();
+  ctx.moveTo(cx, 0);       ctx.lineTo(cx, cy - intR);
+  ctx.moveTo(cx, cy+intR); ctx.lineTo(cx, H);
+  ctx.moveTo(0, cy);       ctx.lineTo(cx-intR, cy);
+  ctx.moveTo(cx+intR, cy); ctx.lineTo(W, cy);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Stop lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx-roadW/2, cy-intR); ctx.lineTo(cx+roadW/2, cy-intR); // N stop
+  ctx.moveTo(cx-roadW/2, cy+intR); ctx.lineTo(cx+roadW/2, cy+intR); // S stop
+  ctx.moveTo(cx-intR, cy-roadW/2); ctx.lineTo(cx-intR, cy+roadW/2); // W stop
+  ctx.moveTo(cx+intR, cy-roadW/2); ctx.lineTo(cx+intR, cy+roadW/2); // E stop
+  ctx.stroke();
+
+  // Crosswalks
+  ctx.fillStyle = 'rgba(255,255,255,0.05)';
+  for (let i = 0; i < 5; i++) {
+    ctx.fillRect(cx-roadW/2+3, cy-intR-13+i*5, roadW-6, 3);
+    ctx.fillRect(cx-roadW/2+3, cy+intR+2+i*5,  roadW-6, 3);
+    ctx.fillRect(cx-intR-13+i*5, cy-roadW/2+3, 3, roadW-6);
+    ctx.fillRect(cx+intR+2+i*5,  cy-roadW/2+3, 3, roadW-6);
+  }
+
+  // Intersection center
+  ctx.fillStyle = '#0d1520';
+  ctx.fillRect(cx-intR+2, cy-intR+2, intR*2-4, intR*2-4);
+
+  // Labels
+  ctx.font = '600 10px Rajdhani,sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#1e3a5f';
+  ctx.fillText('UTARA',   cx,   14);
+  ctx.fillText('SELATAN', cx,   H-4);
+  ctx.fillText('BARAT',   12,   cy);
+  ctx.fillText('TIMUR',   W-12, cy);
+}
+
+// Menggambar kotak zona ROI kamera tiap arah dengan label jumlah kendaraan
+function drawROI() {
+  DIRS.forEach(dir => {
+    const roi   = getRoi(dir);
+    const count = roiCounts[dir];
+    const isActive = (dir === phaseDir);
+
+    ctx.save();
+    ctx.fillStyle = count > 0
+      ? `rgba(0,212,255,${Math.min(0.03 + count * 0.012, 0.16)})`
+      : 'rgba(0,212,255,0.02)';
+    ctx.fillRect(roi.x, roi.y, roi.w, roi.h);
+
+    ctx.setLineDash([5, 4]);
+    ctx.lineWidth = isActive ? 1.5 : 1;
+    ctx.strokeStyle = isActive ? 'rgba(0,255,157,0.65)' : 'rgba(0,212,255,0.32)';
+    if (isActive) { ctx.shadowColor = '#00ff9d'; ctx.shadowBlur = 8; }
+    ctx.strokeRect(roi.x, roi.y, roi.w, roi.h);
+    ctx.setLineDash([]);
+    ctx.shadowBlur = 0;
+
+    const tk = 8;
+    ctx.strokeStyle = isActive ? '#00ff9d' : '#00d4ff88';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(roi.x+tk,roi.y);       ctx.lineTo(roi.x,roi.y);       ctx.lineTo(roi.x,roi.y+tk);
+    ctx.moveTo(roi.x+roi.w-tk,roi.y); ctx.lineTo(roi.x+roi.w,roi.y); ctx.lineTo(roi.x+roi.w,roi.y+tk);
+    ctx.moveTo(roi.x,roi.y+roi.h-tk); ctx.lineTo(roi.x,roi.y+roi.h); ctx.lineTo(roi.x+tk,roi.y+roi.h);
+    ctx.moveTo(roi.x+roi.w,roi.y+roi.h-tk); ctx.lineTo(roi.x+roi.w,roi.y+roi.h); ctx.lineTo(roi.x+roi.w-tk,roi.y+roi.h);
+    ctx.stroke();
+
+    ctx.font = '10px "Share Tech Mono"';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = isActive ? '#00ff9d' : '#00d4ffaa';
+    const lx = roi.x + roi.w/2;
+    const ly = (dir === 'S' || dir === 'E' || dir === 'W') ? roi.y + 12 : roi.y + roi.h - 4;
+    ctx.fillText(`CAM-${dir} [${count}]`, lx, ly);
+
+    ctx.restore();
+  });
+}
+
+// Menggambar 4 tiang lampu lalu lintas di tiap sudut persimpangan
+function drawTrafficLights() {
+  const { cx, cy, intR, roadW } = getGeo();
+  const o = 8;
+  const positions = {
+    N: { x: cx + roadW/2 + o,      y: cy - intR - 20 },
+    S: { x: cx - roadW/2 - o - 16, y: cy + intR },
+    E: { x: cx + intR,             y: cy - roadW/2 - o - 16 },
+    W: { x: cx - intR - 16,        y: cy + roadW/2 + o },
+  };
+  DIRS.forEach(dir => {
+    const pos   = positions[dir];
+    const horiz = (dir === 'E' || dir === 'W');
+    drawLightBox(pos.x, pos.y, trafficLights[dir], horiz);
+  });
+}
+
+// Menggambar satu unit lampu (merah-kuning-hijau) dengan efek glow saat aktif
+function drawLightBox(x, y, state, horizontal) {
+  const bw = horizontal ? 46 : 14;
+  const bh = horizontal ? 14 : 46;
+  const pad = 2, r = 5;
+
+  ctx.fillStyle = '#0d1520';
+  roundRect(ctx, x, y, bw, bh, 3);
+  ctx.fill();
+  ctx.strokeStyle = '#1f2937';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  const lights = [
+    { color: '#ff2d55', active: state === 'red',    glow: '#ff2d55' },
+    { color: '#ffe600', active: state === 'yellow', glow: '#ffe600' },
+    { color: '#00ff9d', active: state === 'green',  glow: '#00ff9d' },
+  ];
+
+  lights.forEach((l, i) => {
+    let lx, ly;
+    if (horizontal) { lx = x + pad + r + i*(r*2+3); ly = y + bh/2; }
+    else            { lx = x + bw/2;                 ly = y + pad + r + i*(r*2+3); }
+    ctx.beginPath();
+    ctx.arc(lx, ly, r, 0, Math.PI*2);
+    ctx.fillStyle = l.active ? 'transparent' : l.color + '22';
+    ctx.fill();
+    if (l.active) {
+      ctx.save();
+      ctx.shadowColor = l.glow;
+      ctx.shadowBlur  = 16;
+      ctx.beginPath();
+      ctx.arc(lx, ly, r, 0, Math.PI*2);
+      ctx.fillStyle = l.color;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(lx-1.5, ly-1.5, r*0.38, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,255,255,0.28)';
+      ctx.fill();
+      ctx.restore();
+    }
+  });
+}
+
+// Menggambar semua kendaraan: bodi, kaca depan, lampu kepala/rem
+function drawCars() {
+  cars.forEach(car => {
+    if (car.state === 'exiting' && car.alpha <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, car.alpha);
+    ctx.translate(car.x, car.y);
+    ctx.rotate(car.angle);
+
+    const hw = CAR_W/2, hl = CAR_H/2;
+
+    ctx.shadowColor = car.color;
+    ctx.shadowBlur  = 4;
+    ctx.fillStyle   = car.color;
+    roundRect(ctx, -hw, -hl, hw*2, hl*2, 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Windshield
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(-hw+1, -hl+2, hw*2-2, hl*0.5);
+
+    // Headlights
+    if (car.state !== 'waiting') {
+      ctx.fillStyle = '#fffbe0';
+      ctx.shadowColor = '#ffff99';
+      ctx.shadowBlur  = 6;
+      ctx.fillRect(-hw+1, -hl-1, 2, 2);
+      ctx.fillRect( hw-3, -hl-1, 2, 2);
+      ctx.shadowBlur = 0;
+    }
+    // Brake lights
+    if (car.state === 'waiting') {
+      ctx.fillStyle = '#ff2d55';
+      ctx.shadowColor = '#ff2d55';
+      ctx.shadowBlur  = 5;
+      ctx.fillRect(-hw+1, hl-2, 2, 2);
+      ctx.fillRect( hw-3, hl-2, 2, 2);
+      ctx.shadowBlur = 0;
+    }
+    ctx.restore();
+  });
+}
+
+//  UI HELPERS
+// Memperbarui teks status fase di panel kanan (hijau/kuning/skip)
+function updatePhaseStatus(state, dir, count) {
+  const bar   = document.getElementById('phaseStatusBar');
+  const dname = DIR_NAMES[dir];
+  let html = '';
+  if (state === 'green')  html = `<span class="status-badge badge-green">HIJAU</span><span style="color:#c8d8f0;font-size:12px;">${dname} — ${count} kend. — ${getDurationLabel(count)}</span>`;
+  else if (state === 'yellow') html = `<span class="status-badge badge-yellow">KUNING</span><span style="color:#c8d8f0;font-size:12px;">${dname} — Transisi...</span>`;
+  else if (state === 'skip')   html = `<span class="status-badge badge-skip">DILEWATI</span><span style="color:#8899bb;font-size:12px;">${dname} — Kosong, fase dilewati</span>`;
+  bar.innerHTML = html;
+}
+
+// Menyorot baris tabel logika yang sesuai dengan jumlah kendaraan saat ini
+function highlightLogicRow(rowId) {
+  document.querySelectorAll('.logic-row').forEach(r => r.classList.remove('logic-active'));
+  const row = document.getElementById(rowId);
+  if (row) row.classList.add('logic-active');
+}
+
+// Memperbarui tabel ROI di panel: jumlah kendaraan, durasi, dan badge status
+function updateROITable() {
+  DIRS.forEach(dir => {
+    const count = roiCounts[dir];
+    const total = totalQueueCounts[dir];
+    document.querySelectorAll(`.roiCount_${dir}`).forEach(el => {
+      el.textContent = count;
+    });
+    document.querySelectorAll(`.roiTotal_${dir}`).forEach(el => {
+      el.textContent = total;
+      // Highlight ruas yang ROI-nya penuh tapi masih ada di luar
+      const outside = total - count;
+      el.style.color = outside > 0 ? '#ff9d44cc' : '#ffe60066';
+    });
+    document.querySelectorAll(`.roiDur_${dir}`).forEach(el => el.textContent = getDurationLabel(count));
+
+    const isActive = (dir === phaseDir && phaseState === 'green');
+    const isSkip   = (dir === phaseDir && phaseState === 'skip');
+    const light    = trafficLights[dir];
+
+    let badge = '';
+    if (isSkip)                  badge = `<span class="status-badge badge-skip">SKIP</span>`;
+    else if (light === 'green')  badge = `<span class="status-badge badge-green">HIJAU</span>`;
+    else if (light === 'yellow') badge = `<span class="status-badge badge-yellow">KUNING</span>`;
+    else if (phaseState === 'clearance' && dir === phaseDir)
+                                 badge = `<span class="status-badge badge-red">JEDA</span>`;
+    else                         badge = `<span class="status-badge badge-red">MERAH</span>`;
+
+    document.querySelectorAll(`.roiStatus_${dir}`).forEach(el => el.innerHTML = badge);
+    const row = document.getElementById(`roiRow_${dir}`);
+    row.classList.remove('active-row','skip-row');
+    if (isActive) row.classList.add('active-row');
+    if (isSkip)   row.classList.add('skip-row');
+  });
+}
+
+// Memperbarui angka metrik global: total kendaraan, siklus, skip, lulus sinyal
+function updateMetrics() {
+  document.getElementById('metTotalCars').textContent = cars.filter(c=>c.state!=='exiting').length;
+  document.getElementById('metCycle').textContent     = cycleCount;
+  document.getElementById('metSkipped').textContent   = skipCount;
+  document.getElementById('metPassed').textContent    = passedCount;
+}
+
+// Menampilkan jam real-time di header, diperbarui setiap detik
+function updateClock() {
+  document.getElementById('clockDisplay').textContent = new Date().toTimeString().slice(0, 8);
+}
+
+//  SLIDER HANDLERS
+// Peta nilai slider ke kecepatan simulasi dan label teks
+const speedMap      = { 1: 0.5, 2: 1.0, 3: 1.5, 4: 2.0 };
+const speedLabelMap = { 1: '0.5x', 2: '1.0x', 3: '1.5x', 4: '2.0x' };
+
+// Slider intensitas: ubah laju spawn kendaraan secara real-time
+document.getElementById('intensitySlider').addEventListener('input', e => {
+  spawnIntensity = parseInt(e.target.value);
+  document.getElementById('intensityVal').textContent = e.target.value;
+});
+// Slider kecepatan: ubah simSpeed yang mempercepat semua gerakan simulasi
+document.getElementById('speedSlider').addEventListener('input', e => {
+  const v = parseInt(e.target.value);
+  simSpeed = speedMap[v];
+  document.getElementById('speedVal').textContent = speedLabelMap[v];
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  PAUSE & RESET
+// ═══════════════════════════════════════════════════════════════════
+// Flag global untuk menghentikan sementara semua logika simulasi
+let isPaused = false;
+
+// Toggle pause/play — menghentikan tickSpawn, updateCars, dan tickPhase
+function togglePause() {
+  isPaused = !isPaused;
+  const btn = document.getElementById('pauseBtn');
+  const overlay = document.getElementById('pausedOverlay');
+  if (isPaused) {
+    btn.innerHTML = `<svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><polygon points="1,1 9,5 1,9"/></svg> PLAY`;
+    btn.classList.add('active');
+    overlay.classList.add('visible');
+  } else {
+    btn.innerHTML = `<svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><rect x="1.5" y="1" width="2.5" height="8" rx="1"/><rect x="6" y="1" width="2.5" height="8" rx="1"/></svg> PAUSE`;
+    btn.classList.remove('active');
+    overlay.classList.remove('visible');
+    lastTime = null; // prevent dt spike on resume
+  }
+}
+
+// Mereset seluruh state simulasi ke kondisi awal (hapus kendaraan, nolkan semua counter)
+function resetSim() {
+  // Reset all state
+  cars           = [];
+  carIdCounter   = 0;
+  cycleCount     = 0;
+  skipCount      = 0;
+  passedCount    = 0;
+  roiCounts      = { N:0, E:0, S:0, W:0 };
+  totalQueueCounts = { N:0, E:0, S:0, W:0 };
+  roiFirstEntry  = { N:null, E:null, S:null, W:null };
+  roiLastCount   = { N:0, E:0, S:0, W:0 };
+  waitTime       = { N:0, E:0, S:0, W:0 };
+  trafficLights  = { N:'red', E:'red', S:'red', W:'red' };
+  phaseTimer     = 0;
+  phaseMaxTimer  = 0;
+  lastTime       = null;
+  // Un-pause if paused
+  if (isPaused) togglePause();
+  initPhase();
+  updateMetrics();
+  updateROITable();
+  // Reset countdown circle
+  updateCountdownCircle(0, 1, 'red');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  COUNTDOWN CIRCLE UPDATER
+// ═══════════════════════════════════════════════════════════════════
+// Memperbarui animasi lingkaran SVG dan angka hitung mundur fase aktif
+const RING_CIRCUMFERENCE = 2 * Math.PI * 11; // r=11 → ~69.12
+
+function updateCountdownCircle(elapsed, total, state) {
+  const ring = document.getElementById('countdownRing');
+  const txt  = document.getElementById('countdownText');
+  if (!ring || !txt) return;
+
+  const ratio   = total > 0 ? Math.max(0, 1 - elapsed / total) : 0;
+  const offset  = RING_CIRCUMFERENCE * (1 - ratio);
+  ring.style.strokeDashoffset = offset;
+
+  const remaining = Math.max(0, Math.ceil(total - elapsed));
+  txt.textContent = total > 0 ? (remaining > 0 ? remaining : '✓') : '–';
+
+  // Color matches phase state
+  let color = '#00ff9d';
+  if (state === 'yellow')    color = '#ffe600';
+  else if (state === 'red' || state === 'clearance') color = '#ff2d55';
+  else if (state === 'skip') color = '#8899bb';
+  ring.style.stroke = color;
+  txt.style.fill    = color;
+}
+
+//  MAIN LOOP
+// Loop utama animasi — dipanggil terus via requestAnimationFrame setiap frame
+let lastTime = null;
+
+function loop(ts) {
+  if (!lastTime) lastTime = ts;
+  const realDt = Math.min((ts - lastTime) / 1000, 0.1);
+  lastTime = ts;
+
+  if (!isPaused) {
+    tickSpawn(realDt);
+    updateCars(realDt);
+    tickPhase(realDt);
+  }
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawRoad();
+  drawROI();
+  drawCars();
+  drawTrafficLights();
+
+  if (!isPaused) {
+    updateROITable();
+    updateMetrics();
+    // Update countdown circle — phaseTimer counts DOWN from phaseMaxTimer
+    updateCountdownCircle(phaseMaxTimer - phaseTimer, phaseMaxTimer, phaseState);
+  }
+
+  requestAnimationFrame(loop);
+}
+//  INIT
+// Jalankan jam dan mulai simulasi setelah 200ms (beri waktu DOM siap)
+setInterval(updateClock, 1000);
+updateClock();
+
+setTimeout(() => {
+  initPhase();
+  requestAnimationFrame(loop);
+}, 200);
+
+// ══════════════════════════════════════════════════════════════
+//  WEB SERIAL BRIDGE — Real-time ESP32 Hardware Integration
+//  Kirim state lampu ke ESP32 DevKit V1 via USB Serial
+//  Zero latency: langsung write ke COM port setiap state berubah
+//  Format: "N:GREEN,E:RED,S:RED,W:RED\n"  Baud: 115200
+// ══════════════════════════════════════════════════════════════
+// Variabel koneksi serial ke ESP32 hardware
+let serialPort   = null;
+let serialWriter = null;
+let lastSentState = '';
+
+// ── Tombol SERIAL di header ───────────────────────────────────
+// Membuat tombol SERIAL secara dinamis dan menyisipkannya ke header
+const serialBtn = document.createElement('button');
+serialBtn.className = 'ctrl-btn';
+serialBtn.id = 'serialBtn';
+serialBtn.title = 'Hubungkan ESP32 via USB Serial';
+serialBtn.innerHTML = `<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 5h6M5 2v6"/><circle cx="5" cy="5" r="4"/></svg> SERIAL`;
+serialBtn.onclick = toggleSerial;
+
+// Sisipkan sebelum divider di header kanan
+const _headerRight = document.querySelector('div[style*="display:flex;gap:12px"]');
+if (_headerRight) {
+  const _divider = _headerRight.querySelector('div[style*="width:1px"]');
+  if (_divider) _headerRight.insertBefore(serialBtn, _divider);
+  else _headerRight.appendChild(serialBtn);
+}
+
+// ── Toggle Koneksi Serial ─────────────────────────────────────
+// Membuka/menutup koneksi USB Serial ke ESP32 dengan baud rate 115200
+async function toggleSerial() {
+  if (serialPort) {
+    // DISCONNECT
+    try {
+      if (serialWriter) {
+        // Kirim all-red sebelum disconnect
+        try { await serialWriter.write('N:RED,E:RED,S:RED,W:RED\n'); } catch(e) {}
+        await serialWriter.close();
+        serialWriter = null;
+      }
+      await serialPort.close();
+    } catch(e) { console.warn('[Serial] Close error:', e.message); }
+    serialPort = null;
+    lastSentState = '';
+    serialBtn.classList.remove('active');
+    serialBtn.style.borderColor = '';
+    serialBtn.innerHTML = `<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 5h6M5 2v6"/><circle cx="5" cy="5" r="4"/></svg> SERIAL`;
+    console.log('[Serial] Disconnected');
+    return;
+  }
+
+  // CONNECT
+  if (!('serial' in navigator)) {
+    alert('Web Serial API tidak didukung!\nGunakan Google Chrome atau Microsoft Edge versi 89+.');
+    return;
+  }
+  try {
+    serialPort = await navigator.serial.requestPort();
+    await serialPort.open({ baudRate: 115200 });
+    const encoder = new TextEncoderStream();
+    encoder.readable.pipeTo(serialPort.writable);
+    serialWriter = encoder.writable.getWriter();
+    serialBtn.classList.add('active');
+    serialBtn.innerHTML = `<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#00ff9d" stroke-width="1.5"><circle cx="5" cy="5" r="3.5"/><circle cx="5" cy="5" r="1.5" fill="#00ff9d" stroke="none"/></svg> CONNECTED`;
+    console.log('[Serial] ✓ Connected to ESP32');
+    // Kirim state awal
+    await sendSerialState(true);
+  } catch (err) {
+    serialPort = null;
+    serialWriter = null;
+    if (err.name !== 'NotFoundError') {
+      console.error('[Serial] Connection failed:', err.message);
+      alert('Gagal koneksi serial:\n' + err.message + '\n\nPastikan Serial Monitor Arduino IDE sudah ditutup.');
+    }
+  }
+}
+
+// ── Kirim State Lampu ke ESP32 ────────────────────────────────
+// Mengambil warna lampu tiap arah dan mengubahnya jadi string huruf besar
+function _getColorStr(dir) {
+  const l = trafficLights[dir] || 'red';
+  return l.toUpperCase(); // 'GREEN' | 'YELLOW' | 'RED'
+}
+
+// Mengirim string state lampu ke ESP32 via serial, hanya jika ada perubahan
+async function sendSerialState(force = false) {
+  if (!serialWriter) return;
+  const stateStr =
+    'N:' + _getColorStr('N') +
+    ',E:' + _getColorStr('E') +
+    ',S:' + _getColorStr('S') +
+    ',W:' + _getColorStr('W');
+  if (!force && stateStr === lastSentState) return; // Tidak ada perubahan — skip
+  lastSentState = stateStr;
+  try {
+    await serialWriter.write(stateStr + '\n');
+    console.log('[Serial] →', stateStr);
+  } catch (err) {
+    console.error('[Serial] Write error:', err.message);
+    // Auto-disconnect jika port error
+    serialPort = null; serialWriter = null;
+    serialBtn.classList.remove('active');
+    serialBtn.innerHTML = `<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#ff2d55" stroke-width="1.5"><circle cx="5" cy="5" r="4"/><line x1="3" y1="3" x2="7" y2="7" stroke="#ff2d55"/><line x1="7" y1="3" x2="3" y2="7" stroke="#ff2d55"/></svg> ERROR`;
+  }
+}
+
+// ── Hook tickPhase: deteksi perubahan state lampu ─────────────
+// Membungkus tickPhase agar kirim serial otomatis saat lampu berganti (bukan tiap frame)
+const _origTickPhase = tickPhase;
+tickPhase = function(realDt) {
+  const _before = JSON.stringify(trafficLights);
+  _origTickPhase(realDt);
+  if (JSON.stringify(trafficLights) !== _before) {
+    sendSerialState(); // Non-blocking, fire-and-forget
+  }
+};
+
+// ── Safety: all-red saat halaman ditutup ─────────────────────
+// Kirim perintah semua merah ke ESP32 sebelum halaman ditutup — keamanan lalu lintas
+window.addEventListener('beforeunload', async () => {
+  if (serialWriter) {
+    try { await serialWriter.write('N:RED,E:RED,S:RED,W:RED\n'); } catch(e) {}
+  }
+});
+
+console.log('[ATCS Serial Bridge] Loaded — klik tombol SERIAL untuk menghubungkan ESP32');
+</script>
+</body>
+</html>

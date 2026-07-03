@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATCS — Dashboard Cloud (Mobile)</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --green:  #00ff9d;
+  --yellow: #ffe600;
+  --red:    #ff2d55;
+  --blue:   #00d4ff;
+  --bg:     #060d1a;
+  --panel:  rgba(15,23,42,0.95);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  font-family: 'Rajdhani', sans-serif;
+  color: #c8d8f0;
+  min-height: 100vh;
+  padding: 12px;
+}
+.mono { font-family: 'Share Tech Mono', monospace; }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.2); border-radius: 2px; }
+
+/* ── Config panel (form Firebase pertama kali) ── */
+#configPanel {
+  position: fixed; inset: 0; background: rgba(6,13,26,0.97);
+  display: flex; align-items: center; justify-content: center; z-index: 999; padding: 16px;
+}
+.config-box {
+  background: var(--panel); border: 1px solid rgba(0,212,255,0.2);
+  border-radius: 12px; padding: 24px; width: 100%; max-width: 420px;
+}
+.config-box h2 { font-family: 'Share Tech Mono', monospace; font-size: 13px; letter-spacing: 3px; color: var(--blue); margin-bottom: 6px; }
+.config-box p { font-size: 11px; color: #8899bb; margin-bottom: 18px; line-height: 1.6; }
+.cfg-label { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: #8899bb; margin-bottom: 4px; display: block; }
+.cfg-input {
+  width: 100%; padding: 9px 12px; background: rgba(0,212,255,0.04);
+  border: 1px solid rgba(0,212,255,0.2); border-radius: 5px; color: var(--blue);
+  font-family: 'Share Tech Mono', monospace; font-size: 12px; outline: none; margin-bottom: 12px;
+}
+.cfg-input:focus { border-color: rgba(0,212,255,0.5); }
+.cfg-btn {
+  width: 100%; padding: 11px; background: rgba(0,212,255,0.1);
+  border: 1px solid rgba(0,212,255,0.3); border-radius: 5px; color: var(--blue);
+  font-family: 'Share Tech Mono', monospace; font-size: 12px; letter-spacing: 2px;
+  cursor: pointer;
+}
+.cfg-btn:active { background: rgba(0,212,255,0.2); }
+.cfg-err { color: var(--red); font-size: 10px; margin-top: 6px; display: none; }
+
+/* ── Main dashboard ── */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.panel {
+  background: linear-gradient(135deg, rgba(15,23,50,0.92) 0%, rgba(8,14,35,0.96) 100%);
+  border: 1px solid rgba(0,212,255,0.15); border-radius: 10px;
+  padding: 14px; margin-bottom: 10px;
+}
+.panel-title { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: rgba(0,212,255,0.6); margin-bottom: 10px; }
+
+/* Big phase display — paling penting untuk mobile */
+.phase-display { font-family: 'Share Tech Mono', monospace; font-size: 26px; text-align: center; padding: 18px; border-radius: 10px; margin-bottom: 10px; }
+.phase-GREEN     { color: var(--green);  background: rgba(0,255,157,0.1);  border: 2px solid rgba(0,255,157,0.3); }
+.phase-YELLOW    { color: var(--yellow); background: rgba(255,230,0,0.1);  border: 2px solid rgba(255,230,0,0.3); }
+.phase-CLEARANCE { color: var(--red);    background: rgba(255,45,85,0.1);  border: 2px solid rgba(255,45,85,0.3); }
+.phase-SKIP      { color: #8899bb;       background: rgba(100,120,160,0.1);border: 2px solid rgba(100,120,160,0.3); }
+.phase-sub { text-align: center; font-size: 12px; color: #8899bb; margin-top: 4px; }
+
+.progress-bg { height: 7px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; margin-top: 10px; }
+.progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s linear, background 0.3s; }
+
+/* 4-direction grid, mobile-friendly */
+.dir-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dir-card {
+  background: rgba(0,212,255,0.04); border: 1px solid rgba(0,212,255,0.1);
+  border-radius: 8px; padding: 12px; text-align: center;
+}
+.dir-card.active { border-color: rgba(0,255,157,0.4); background: rgba(0,255,157,0.06); }
+.dir-name { font-size: 10px; letter-spacing: 1.5px; color: #8899bb; margin-bottom: 6px; }
+.dir-leds { display: flex; justify-content: center; gap: 5px; margin-bottom: 6px; }
+.led-dot { width: 14px; height: 14px; border-radius: 50%; }
+.led-dot.red-off { background: #3a0010; } .led-dot.red-on { background: var(--red); box-shadow: 0 0 8px var(--red); }
+.led-dot.yellow-off { background: #2a2200; } .led-dot.yellow-on { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
+.led-dot.green-off { background: #002a14; } .led-dot.green-on { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.dir-count { font-family: 'Share Tech Mono', monospace; font-size: 20px; color: var(--blue); }
+.dir-count-label { font-size: 8px; color: #667788; letter-spacing: 1px; }
+
+/* Metrics */
+.metrics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.metric-card { background: rgba(0,212,255,0.04); border: 1px solid rgba(0,212,255,0.1); border-radius: 6px; padding: 10px; text-align: center; }
+.metric-value { font-family: 'Share Tech Mono', monospace; font-size: 20px; color: var(--blue); }
+.metric-label { font-size: 8px; letter-spacing: 1.2px; text-transform: uppercase; color: #8899bb; margin-top: 2px; }
+
+/* Connection */
+.conn-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; font-family: 'Share Tech Mono', monospace; font-size: 9px; }
+.conn-ok { background: rgba(0,255,157,0.08); color: var(--green); border: 1px solid rgba(0,255,157,0.25); }
+.conn-warn { background: rgba(255,230,0,0.08); color: var(--yellow); border: 1px solid rgba(255,230,0,0.25); }
+.conn-err { background: rgba(255,45,85,0.08); color: var(--red); border: 1px solid rgba(255,45,85,0.25); }
+
+/* Log */
+.log-box { background: rgba(0,0,0,0.35); border-radius: 5px; padding: 8px 10px; height: 100px; overflow-y: auto; font-family: 'Share Tech Mono', monospace; font-size: 9px; line-height: 1.7; }
+.log-ok { color: var(--green); } .log-warn { color: var(--yellow); } .log-err { color: var(--red); } .log-info { color: var(--blue); }
+
+.logout-btn {
+  padding: 4px 10px; background: rgba(255,45,85,0.08); border: 1px solid rgba(255,45,85,0.2);
+  border-radius: 4px; color: var(--red); font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; letter-spacing: 1px; cursor: pointer;
+}
+</style>
+</head>
+<body>
+
+<!-- Config Panel -->
+<div id="configPanel">
+  <div class="config-box">
+    <h2>⬡ ATCS CLOUD SETUP</h2>
+    <p>Masukkan konfigurasi Firebase project kamu. Tersimpan di browser ini saja, tidak perlu diisi ulang setiap buka.</p>
+    <label class="cfg-label">API Key</label>
+    <input class="cfg-input" id="cfgApiKey" placeholder="AIzaSy..." spellcheck="false">
+    <label class="cfg-label">Auth Domain</label>
+    <input class="cfg-input" id="cfgAuthDomain" placeholder="project.firebaseapp.com" spellcheck="false">
+    <label class="cfg-label">Database URL</label>
+    <input class="cfg-input" id="cfgDbUrl" placeholder="https://project-default-rtdb.firebaseio.com" spellcheck="false">
+    <label class="cfg-label">Project ID</label>
+    <input class="cfg-input" id="cfgProjectId" placeholder="project-id" spellcheck="false">
+    <button class="cfg-btn" onclick="saveConfig()">▶ HUBUNGKAN</button>
+    <div class="cfg-err" id="cfgErr">Lengkapi semua field di atas.</div>
+  </div>
+</div>
+
+<!-- Main Dashboard -->
+<div id="mainDash" style="display:none;">
+
+  <div class="header">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="live-dot"></div>
+      <span class="mono" style="font-size:12px;color:var(--blue);letter-spacing:2px;">ATCS CLOUD</span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <span id="esp32Badge" class="conn-badge conn-warn">ESP32 —</span>
+      <button class="logout-btn" onclick="clearConfig()">RESET</button>
+    </div>
+  </div>
+
+  <!-- Phase -->
+  <div class="panel">
+    <div class="panel-title">⬡ Fase Aktif Saat Ini</div>
+    <div id="phaseDisplay" class="phase-display phase-SKIP">— SKIP —</div>
+    <div class="phase-sub" id="phaseSub">Menunggu data...</div>
+    <div class="progress-bg"><div id="progressFill" class="progress-fill" style="width:0%;"></div></div>
+  </div>
+
+  <!-- 4 Directions -->
+  <div class="panel">
+    <div class="panel-title">⬡ Status 4 Arah</div>
+    <div class="dir-grid">
+      <div class="dir-card" id="card-N">
+        <div class="dir-name">UTARA</div>
+        <div class="dir-leds">
+          <div class="led-dot red-off" id="led-N-r"></div>
+          <div class="led-dot yellow-off" id="led-N-y"></div>
+          <div class="led-dot green-off" id="led-N-g"></div>
+        </div>
+        <div class="dir-count" id="cnt-N">0</div>
+        <div class="dir-count-label">kendaraan</div>
+      </div>
+      <div class="dir-card" id="card-E">
+        <div class="dir-name">TIMUR</div>
+        <div class="dir-leds">
+          <div class="led-dot red-off" id="led-E-r"></div>
+          <div class="led-dot yellow-off" id="led-E-y"></div>
+          <div class="led-dot green-off" id="led-E-g"></div>
+        </div>
+        <div class="dir-count" id="cnt-E">0</div>
+        <div class="dir-count-label">kendaraan</div>
+      </div>
+      <div class="dir-card" id="card-S">
+        <div class="dir-name">SELATAN</div>
+        <div class="dir-leds">
+          <div class="led-dot red-off" id="led-S-r"></div>
+          <div class="led-dot yellow-off" id="led-S-y"></div>
+          <div class="led-dot green-off" id="led-S-g"></div>
+        </div>
+        <div class="dir-count" id="cnt-S">0</div>
+        <div class="dir-count-label">kendaraan</div>
+      </div>
+      <div class="dir-card" id="card-W">
+        <div class="dir-name">BARAT</div>
+        <div class="dir-leds">
+          <div class="led-dot red-off" id="led-W-r"></div>
+          <div class="led-dot yellow-off" id="led-W-y"></div>
+          <div class="led-dot green-off" id="led-W-g"></div>
+        </div>
+        <div class="dir-count" id="cnt-W">0</div>
+        <div class="dir-count-label">kendaraan</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Metrics -->
+  <div class="panel">
+    <div class="panel-title">⬡ Metrik Sistem</div>
+    <div class="metrics-grid">
+      <div class="metric-card"><div class="metric-value" id="metCycle">0</div><div class="metric-label">Siklus</div></div>
+      <div class="metric-card"><div class="metric-value" id="metSkip">0</div><div class="metric-label">Skip</div></div>
+      <div class="metric-card"><div class="metric-value" id="metUptime">0s</div><div class="metric-label">Uptime</div></div>
+      <div class="metric-card"><div class="metric-value" id="metTotal">0</div><div class="metric-label">Total Kendaraan</div></div>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="panel">
+    <div class="panel-title">⬡ Log Sistem</div>
+    <div class="log-box" id="logBox"><span class="log-info">Menunggu data...</span></div>
+  </div>
+
+</div>
+
+<script>
+const CFG_KEY = "atcs_firebase_config";
+const DIRS = ["N","E","S","W"];
+
+function loadConfig() {
+  try { return JSON.parse(localStorage.getItem(CFG_KEY)); } catch { return null; }
+}
+function saveConfig() {
+  const cfg = {
+    apiKey: document.getElementById("cfgApiKey").value.trim(),
+    authDomain: document.getElementById("cfgAuthDomain").value.trim(),
+    databaseURL: document.getElementById("cfgDbUrl").value.trim(),
+    projectId: document.getElementById("cfgProjectId").value.trim(),
+  };
+  if (!cfg.apiKey || !cfg.databaseURL || !cfg.projectId) {
+    document.getElementById("cfgErr").style.display = "block";
+    return;
+  }
+  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+  initDashboard(cfg);
+}
+function clearConfig() {
+  localStorage.removeItem(CFG_KEY);
+  location.reload();
+}
+
+function getDurationLabel(c) {
+  if (c === 0) return "0 dtk (SKIP)";
+  if (c <= 2)  return "5 dtk";
+  if (c <= 5)  return "10 dtk";
+  if (c <= 9)  return "15 dtk";
+  return "20 dtk";
+}
+
+function setLEDs(dir, colorOn) {
+  const r = document.getElementById(`led-${dir}-r`);
+  const y = document.getElementById(`led-${dir}-y`);
+  const g = document.getElementById(`led-${dir}-g`);
+  r.className = `led-dot ${colorOn === "RED" ? "red-on" : "red-off"}`;
+  y.className = `led-dot ${colorOn === "YELLOW" ? "yellow-on" : "yellow-off"}`;
+  g.className = `led-dot ${colorOn === "GREEN" ? "green-on" : "green-off"}`;
+}
+
+function applyUpdate(liveData) {
+  const ph = liveData.phase;
+  const counts = liveData.counts;
+  const meta = liveData.meta;
+
+  const colors = {N:"RED", E:"RED", S:"RED", W:"RED"};
+  if (ph.state === "GREEN")  colors[ph.dir] = "GREEN";
+  if (ph.state === "YELLOW") colors[ph.dir] = "YELLOW";
+
+  const DIR_NAMES = {N:"UTARA", E:"TIMUR", S:"SELATAN", W:"BARAT"};
+
+  DIRS.forEach(d => {
+    setLEDs(d, colors[d]);
+    document.getElementById(`cnt-${d}`).textContent = counts[d] ?? 0;
+    document.getElementById(`card-${d}`).classList.toggle("active", d === ph.dir);
+  });
+
+  const pd = document.getElementById("phaseDisplay");
+  pd.textContent = `${DIR_NAMES[ph.dir]} — ${ph.state}`;
+  pd.className = `phase-display phase-${ph.state}`;
+
+  const sub = document.getElementById("phaseSub");
+  if (ph.state === "GREEN") sub.textContent = `${ph.cnt} kendaraan — durasi ${getDurationLabel(ph.cnt)}`;
+  else if (ph.state === "YELLOW") sub.textContent = "Transisi ke merah...";
+  else if (ph.state === "CLEARANCE") sub.textContent = "Jeda keamanan — semua merah";
+  else sub.textContent = "Ruas kosong, fase dilewati";
+
+  const pct = ph.dur_s > 0 ? Math.max(0, (ph.rem_s / ph.dur_s) * 100) : 0;
+  const fill = document.getElementById("progressFill");
+  fill.style.width = pct + "%";
+  fill.style.background =
+    ph.state === "GREEN"     ? "#00ff9d" :
+    ph.state === "YELLOW"    ? "#ffe600" :
+    ph.state === "CLEARANCE" ? "#ff2d55" : "#8899bb";
+
+  document.getElementById("metCycle").textContent = meta.cycle ?? 0;
+  document.getElementById("metSkip").textContent  = meta.skip_count ?? 0;
+  document.getElementById("metTotal").textContent = DIRS.reduce((s,d) => s + (counts[d]||0), 0);
+  const up = meta.uptime_s ?? 0;
+  const m = Math.floor(up/60), s = up%60;
+  document.getElementById("metUptime").textContent = m > 0 ? `${m}m${s}s` : `${s}s`;
+
+  const eb = document.getElementById("esp32Badge");
+  eb.textContent = `ESP32 ${meta.esp32_connected ? "✓ OK" : "✗ DISC"}`;
+  eb.className = `conn-badge ${meta.esp32_connected ? "conn-ok" : "conn-err"}`;
+}
+
+function renderLog(logs) {
+  if (!logs || !logs.length) return;
+  document.getElementById("logBox").innerHTML = [...logs].reverse()
+    .map(l => `<div class="log-${l.level||'info'}">[${l.ts}] ${l.msg}</div>`).join("");
+}
+
+function initDashboard(cfg) {
+  document.getElementById("configPanel").style.display = "none";
+  document.getElementById("mainDash").style.display = "block";
+
+  try { firebase.initializeApp(cfg); } catch(e) { /* already initialized */ }
+  const database = firebase.database();
+
+  const liveData = { counts:{N:0,E:0,S:0,W:0}, phase:{dir:"N",state:"SKIP",rem_s:0.6,dur_s:0.6,cnt:0}, meta:{cycle:0,skip_count:0,uptime_s:0,esp32_connected:false} };
+
+  database.ref("/atcs/counts").on("value", snap => {
+    const d = snap.val(); if (!d) return;
+    liveData.counts = {N:d.N||0, E:d.E||0, S:d.S||0, W:d.W||0};
+    applyUpdate(liveData);
+  });
+
+  database.ref("/atcs/phase").on("value", snap => {
+    const d = snap.val(); if (!d) return;
+    liveData.phase = {dir:d.dir||"N", state:d.state||"SKIP", rem_s:d.rem_s||0, dur_s:d.dur_s||0.6, cnt:d.cnt||0};
+    applyUpdate(liveData);
+  });
+
+  database.ref("/atcs/meta").on("value", snap => {
+    const d = snap.val(); if (!d) return;
+    liveData.meta = {cycle:d.cycle||0, skip_count:d.skip_count||0, uptime_s:d.uptime_s||0, esp32_connected:d.esp32_connected||false};
+    applyUpdate(liveData);
+  });
+
+  database.ref("/atcs/log").on("value", snap => {
+    const d = snap.val(); if (!d) return;
+    renderLog(Array.isArray(d) ? d : Object.values(d));
+  });
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  const saved = loadConfig();
+  if (saved && saved.apiKey && saved.databaseURL) {
+    initDashboard(saved);
+  } else {
+    document.getElementById("configPanel").style.display = "flex";
+  }
+});
+</script>
+</body>
+</html>

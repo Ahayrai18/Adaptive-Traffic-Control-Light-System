@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATCS — Dashboard Lokal</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --green:  #00ff9d;
+  --yellow: #ffe600;
+  --red:    #ff2d55;
+  --blue:   #00d4ff;
+  --bg:     #060d1a;
+  --panel:  rgba(15,23,42,0.95);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  font-family: 'Rajdhani', sans-serif;
+  color: #c8d8f0;
+  min-height: 100vh;
+  padding: 16px;
+}
+.mono { font-family: 'Share Tech Mono', monospace; }
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.25); border-radius: 3px; }
+
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px; padding: 0 4px;
+}
+.title-area { display: flex; align-items: center; gap: 12px; }
+.live-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--green); box-shadow: 0 0 10px var(--green);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.panel {
+  background: linear-gradient(135deg, rgba(15,23,50,0.92) 0%, rgba(8,14,35,0.96) 100%);
+  border: 1px solid rgba(0,212,255,0.15);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
+  position: relative;
+}
+.panel::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,212,255,0.5), transparent);
+  border-radius: 10px 10px 0 0;
+}
+.panel-title {
+  font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase;
+  color: rgba(0,212,255,0.6); margin-bottom: 12px;
+}
+
+.main-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 12px;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+/* Camera grid 2x2 */
+.cam-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.cam-box {
+  background: #000;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  aspect-ratio: 4/3;
+}
+.cam-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cam-label {
+  position: absolute; top: 6px; left: 6px;
+  background: rgba(0,0,0,0.6);
+  padding: 2px 8px; border-radius: 4px;
+  font-size: 11px; font-family: 'Share Tech Mono', monospace;
+  color: var(--blue);
+}
+
+/* Lights widget */
+.lights-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.light-pole {
+  background: rgba(20,30,55,0.9);
+  border: 1px solid rgba(0,212,255,0.1);
+  border-radius: 8px;
+  padding: 12px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.led {
+  width: 24px; height: 24px; border-radius: 50%;
+  transition: box-shadow 0.3s, background 0.3s;
+}
+.led-red    { background: #3a0010; }
+.led-yellow { background: #2a2200; }
+.led-green  { background: #002a14; }
+.led-red.on    { background: var(--red);    box-shadow: 0 0 16px var(--red),    0 0 30px rgba(255,45,85,0.4); }
+.led-yellow.on { background: var(--yellow); box-shadow: 0 0 16px var(--yellow), 0 0 30px rgba(255,230,0,0.4); }
+.led-green.on  { background: var(--green);  box-shadow: 0 0 16px var(--green),  0 0 30px rgba(0,255,157,0.4); }
+.dir-label { font-size: 11px; letter-spacing: 1.5px; color: #8899bb; }
+.dir-count { font-family: 'Share Tech Mono', monospace; font-size: 16px; color: var(--blue); }
+
+/* Phase display */
+.phase-display {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 24px; text-align: center;
+  padding: 14px; border-radius: 8px; margin-bottom: 10px;
+  transition: all 0.3s;
+}
+.phase-GREEN     { color: var(--green);  background: rgba(0,255,157,0.08);  border: 1px solid rgba(0,255,157,0.2); }
+.phase-YELLOW    { color: var(--yellow); background: rgba(255,230,0,0.08);  border: 1px solid rgba(255,230,0,0.2); }
+.phase-CLEARANCE { color: var(--red);    background: rgba(255,45,85,0.08);  border: 1px solid rgba(255,45,85,0.2); }
+.phase-SKIP      { color: #8899bb;       background: rgba(100,120,160,0.08);border: 1px solid rgba(100,120,160,0.2); }
+
+.progress-bg { height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s linear, background 0.3s; }
+
+/* Metrics */
+.metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.metric-card {
+  background: rgba(0,212,255,0.04); border: 1px solid rgba(0,212,255,0.1);
+  border-radius: 6px; padding: 10px 8px; text-align: center;
+}
+.metric-value { font-family: 'Share Tech Mono', monospace; font-size: 22px; color: var(--blue); }
+.metric-label { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: #8899bb; margin-top: 3px; }
+
+/* Table */
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { font-size: 9px; letter-spacing: 1.5px; color: rgba(0,212,255,0.5); text-transform: uppercase; padding: 5px 6px; text-align: left; border-bottom: 1px solid rgba(0,212,255,0.1); }
+td { padding: 6px 6px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.row-active { background: rgba(0,255,157,0.05); }
+.status-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 3px;
+  font-family: 'Share Tech Mono', monospace; font-size: 9px;
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.badge-green  { background: rgba(0,255,157,0.12); color: var(--green);  border: 1px solid rgba(0,255,157,0.2); }
+.badge-yellow { background: rgba(255,230,0,0.12);  color: var(--yellow); border: 1px solid rgba(255,230,0,0.2); }
+.badge-red    { background: rgba(255,45,85,0.12);   color: var(--red);   border: 1px solid rgba(255,45,85,0.2); }
+.badge-skip   { background: rgba(100,120,160,0.12); color: #8899bb;      border: 1px solid rgba(100,120,160,0.2); }
+
+/* Log */
+.log-box {
+  background: rgba(0,0,0,0.35); border: 1px solid rgba(0,212,255,0.06);
+  border-radius: 5px; padding: 8px 10px; height: 150px; overflow-y: auto;
+  font-family: 'Share Tech Mono', monospace; font-size: 10px; line-height: 1.7;
+}
+.log-ok { color: var(--green); } .log-warn { color: var(--yellow); }
+.log-err { color: var(--red); } .log-info { color: var(--blue); }
+
+/* Connection badges */
+.conn-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 4px;
+  font-family: 'Share Tech Mono', monospace; font-size: 10px;
+}
+.conn-ok  { background: rgba(0,255,157,0.08); color: var(--green); border: 1px solid rgba(0,255,157,0.25); }
+.conn-err { background: rgba(255,45,85,0.08); color: var(--red);   border: 1px solid rgba(255,45,85,0.25); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="title-area">
+    <div class="live-dot"></div>
+    <span class="mono" style="font-size:14px;color:var(--blue);letter-spacing:3px;">ATCS</span>
+    <span style="font-size:10px;color:#8899bb;letter-spacing:2px;">DASHBOARD LOKAL — FLASK</span>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <span id="esp32Badge" class="conn-badge conn-err">ESP32 —</span>
+    <span class="mono" style="font-size:11px;color:#00d4ffaa;" id="clock">--:--:--</span>
+  </div>
+</div>
+
+<div class="main-grid">
+
+  <!-- LEFT: Cameras + ROI-less detection -->
+  <div>
+    <div class="panel">
+      <div class="panel-title">⬡ Live Feed 4 Kamera (YOLOv8 Custom)</div>
+      <div class="cam-grid">
+        <div class="cam-box">
+          <img id="camN" src="" alt="Utara">
+          <div class="cam-label">UTARA</div>
+        </div>
+        <div class="cam-box">
+          <img id="camE" src="" alt="Timur">
+          <div class="cam-label">TIMUR</div>
+        </div>
+        <div class="cam-box">
+          <img id="camS" src="" alt="Selatan">
+          <div class="cam-label">SELATAN</div>
+        </div>
+        <div class="cam-box">
+          <img id="camW" src="" alt="Barat">
+          <div class="cam-label">BARAT</div>
+        </div>
+      </div>
+      <div style="margin-top:8px;font-size:9px;color:#8899bb;">
+        Catatan: feed kamera tampil di jendela OpenCV terpisah di laptop (cv2.imshow).
+        Panel ini menampilkan data hasil deteksi secara live.
+      </div>
+    </div>
+
+    <!-- ROI / Detection Table -->
+    <div class="panel">
+      <div class="panel-title">⬡ Deteksi Kendaraan per Ruas</div>
+      <table>
+        <thead>
+          <tr><th>Arah</th><th>Jumlah</th><th>Durasi Hijau</th><th>Status</th><th>Wait Time</th></tr>
+        </thead>
+        <tbody id="detectTable">
+          <tr id="row-N"><td>UTARA</td><td class="mono" id="cnt-N">0</td><td class="mono" id="dur-N">-</td><td id="badge-N"></td><td class="mono" id="wait-N">0s</td></tr>
+          <tr id="row-E"><td>TIMUR</td><td class="mono" id="cnt-E">0</td><td class="mono" id="dur-E">-</td><td id="badge-E"></td><td class="mono" id="wait-E">0s</td></tr>
+          <tr id="row-S"><td>SELATAN</td><td class="mono" id="cnt-S">0</td><td class="mono" id="dur-S">-</td><td id="badge-S"></td><td class="mono" id="wait-S">0s</td></tr>
+          <tr id="row-W"><td>BARAT</td><td class="mono" id="cnt-W">0</td><td class="mono" id="dur-W">-</td><td id="badge-W"></td><td class="mono" id="wait-W">0s</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RIGHT: Control panel -->
+  <div>
+
+    <!-- Phase status -->
+    <div class="panel">
+      <div class="panel-title">⬡ Status Fase Aktif</div>
+      <div id="phaseDisplay" class="phase-display phase-SKIP">— SKIP —</div>
+      <div class="progress-bg">
+        <div id="progressFill" class="progress-fill" style="width:0%;background:#8899bb;"></div>
+      </div>
+    </div>
+
+    <!-- 4 Lights -->
+    <div class="panel">
+      <div class="panel-title">⬡ Status Lampu Fisik (ESP32)</div>
+      <div class="lights-row">
+        <div class="light-pole">
+          <div class="led led-red" id="led-N-r"></div>
+          <div class="led led-yellow" id="led-N-y"></div>
+          <div class="led led-green" id="led-N-g"></div>
+          <div class="dir-label">UTARA</div>
+          <div class="dir-count" id="lcnt-N">0</div>
+        </div>
+        <div class="light-pole">
+          <div class="led led-red" id="led-E-r"></div>
+          <div class="led led-yellow" id="led-E-y"></div>
+          <div class="led led-green" id="led-E-g"></div>
+          <div class="dir-label">TIMUR</div>
+          <div class="dir-count" id="lcnt-E">0</div>
+        </div>
+        <div class="light-pole">
+          <div class="led led-red" id="led-S-r"></div>
+          <div class="led led-yellow" id="led-S-y"></div>
+          <div class="led led-green" id="led-S-g"></div>
+          <div class="dir-label">SELATAN</div>
+          <div class="dir-count" id="lcnt-S">0</div>
+        </div>
+        <div class="light-pole">
+          <div class="led led-red" id="led-W-r"></div>
+          <div class="led led-yellow" id="led-W-y"></div>
+          <div class="led led-green" id="led-W-g"></div>
+          <div class="dir-label">BARAT</div>
+          <div class="dir-count" id="lcnt-W">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="panel">
+      <div class="panel-title">⬡ Metrik Sistem</div>
+      <div class="metrics-grid">
+        <div class="metric-card"><div class="metric-value" id="metCycle">0</div><div class="metric-label">Total Siklus</div></div>
+        <div class="metric-card"><div class="metric-value" id="metSkip">0</div><div class="metric-label">Skip Fase</div></div>
+        <div class="metric-card"><div class="metric-value" id="metUptime">0s</div><div class="metric-label">Uptime</div></div>
+        <div class="metric-card"><div class="metric-value" id="metTotal">0</div><div class="metric-label">Total Kendaraan</div></div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="panel">
+      <div class="panel-title">⬡ System Log</div>
+      <div class="log-box" id="logBox"><span class="log-info">Menunggu data...</span></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const DIRS = ["N","E","S","W"];
+const DIR_NAMES = {N:"UTARA", E:"TIMUR", S:"SELATAN", W:"BARAT"};
+
+function getDurationLabel(c) {
+  if (c === 0) return "0 dtk (SKIP)";
+  if (c <= 2)  return "5 dtk";
+  if (c <= 5)  return "10 dtk";
+  if (c <= 9)  return "15 dtk";
+  return "20 dtk";
+}
+
+function setLED(dir, color) {
+  ["r","y","g"].forEach(c => document.getElementById(`led-${dir}-${c}`).classList.remove("on"));
+  const map = {RED:"r", YELLOW:"y", GREEN:"g"};
+  const key = map[color];
+  if (key) document.getElementById(`led-${dir}-${key}`).classList.add("on");
+}
+
+async function poll() {
+  try {
+    const r = await fetch("/api/state");
+    const d = await r.json();
+    updateUI(d);
+  } catch (e) {
+    console.warn("Poll error:", e);
+  }
+  setTimeout(poll, 400);
+}
+
+function updateUI(data) {
+  const counts = data.counts;
+  const phase  = data.phase;
+  const meta   = data.meta;
+
+  // Determine light colors for all 4 dirs based on phase
+  const colors = {N:"RED", E:"RED", S:"RED", W:"RED"};
+  if (phase.state === "GREEN")  colors[phase.dir] = "GREEN";
+  if (phase.state === "YELLOW") colors[phase.dir] = "YELLOW";
+
+  DIRS.forEach(d => {
+    setLED(d, colors[d]);
+    document.getElementById(`lcnt-${d}`).textContent = counts[d] ?? 0;
+    document.getElementById(`cnt-${d}`).textContent = counts[d] ?? 0;
+    document.getElementById(`dur-${d}`).textContent = getDurationLabel(counts[d] ?? 0);
+
+    let badge = `<span class="status-badge badge-red">MERAH</span>`;
+    if (d === phase.dir && phase.state === "GREEN")  badge = `<span class="status-badge badge-green">HIJAU</span>`;
+    if (d === phase.dir && phase.state === "YELLOW") badge = `<span class="status-badge badge-yellow">KUNING</span>`;
+    if (d === phase.dir && phase.state === "SKIP")   badge = `<span class="status-badge badge-skip">SKIP</span>`;
+    document.getElementById(`badge-${d}`).innerHTML = badge;
+
+    document.getElementById(`row-${d}`).classList.toggle("row-active", d === phase.dir);
+  });
+
+  // Phase display
+  const pd = document.getElementById("phaseDisplay");
+  pd.textContent = `${DIR_NAMES[phase.dir]} — ${phase.state}`;
+  pd.className = `phase-display phase-${phase.state}`;
+
+  const pct = phase.dur_s > 0 ? Math.max(0, (phase.rem_s / phase.dur_s) * 100) : 0;
+  const fill = document.getElementById("progressFill");
+  fill.style.width = pct + "%";
+  fill.style.background =
+    phase.state === "GREEN"     ? "#00ff9d" :
+    phase.state === "YELLOW"    ? "#ffe600" :
+    phase.state === "CLEARANCE" ? "#ff2d55" : "#8899bb";
+
+  // Metrics
+  document.getElementById("metCycle").textContent  = meta.cycle ?? 0;
+  document.getElementById("metSkip").textContent   = meta.skip_count ?? 0;
+  document.getElementById("metTotal").textContent  = DIRS.reduce((s,d) => s + (counts[d]||0), 0);
+  const up = meta.uptime_s ?? 0;
+  const m = Math.floor(up/60), s = up%60;
+  document.getElementById("metUptime").textContent = m > 0 ? `${m}m${s}s` : `${s}s`;
+
+  // ESP32 badge
+  const eb = document.getElementById("esp32Badge");
+  eb.textContent = `ESP32 ${meta.esp32_connected ? "✓ OK" : "✗ DISC"}`;
+  eb.className = `conn-badge ${meta.esp32_connected ? "conn-ok" : "conn-err"}`;
+
+  // Log
+  if (data.log && data.log.length) {
+    document.getElementById("logBox").innerHTML = [...data.log].reverse()
+      .map(l => `<div class="log-${l.level||'info'}">[${l.ts}] ${l.msg}</div>`).join("");
+  }
+}
+
+setInterval(() => {
+  document.getElementById("clock").textContent = new Date().toTimeString().slice(0,8);
+}, 1000);
+
+poll();
+</script>
+</body>
+</html>

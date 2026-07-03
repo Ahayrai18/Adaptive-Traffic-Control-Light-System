@@ -1,0 +1,33 @@
+# Kredensial Firebase — JANGAN di-commit!
+serviceAccountKey.json
+
+# File kalibrasi ROI (binary, buat ulang dengan StreetPicker)
+streetPos
+
+# Foto maket (opsional, bisa besar)
+street_image.jpg
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.env
+venv/
+env/
+.venv/
+
+# VS Code / IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Arduino build cache
+.arduino15/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

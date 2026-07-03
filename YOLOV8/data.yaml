@@ -1,0 +1,14 @@
+path: C:/Users/Kiki Salikil/Downloads/capstone-cuda/dataset
+
+train: train/images
+val: valid/images
+
+nc: 6
+
+names:
+  0: Mobil biru
+  1: Mobil hijau
+  2: Mobil kuning
+  3: Mobil merah
+  4: Mobil orange
+  5: Mobil ungu
