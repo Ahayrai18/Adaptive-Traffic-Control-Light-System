@@ -1,6 +1,21 @@
 # 🚦 Adaptive Traffic Control System (ATCS)
 ### Car Color Detection with YOLOv8 + ESP32 Traffic Light Controller
 
+![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-Deep_Learning-EE4C2C?logo=pytorch)
+![YOLOv8](https://img.shields.io/badge/YOLOv8-Object_Detection-purple)
+![Ultralytics](https://img.shields.io/badge/Ultralytics-YOLO-black)
+![OpenCV](https://img.shields.io/badge/OpenCV-Computer_Vision-blue?logo=opencv)
+![NumPy](https://img.shields.io/badge/NumPy-Scientific_Computing-013243?logo=numpy)
+![Flask](https://img.shields.io/badge/Flask-Web_Dashboard-black?logo=flask)
+![PySerial](https://img.shields.io/badge/PySerial-Communication-blue)
+![ESP32](https://img.shields.io/badge/ESP32-IoT-red)
+![Arduino](https://img.shields.io/badge/Arduino-C%2B%2B-00979D?logo=arduino)
+![CUDA](https://img.shields.io/badge/NVIDIA-CUDA-76B900?logo=nvidia)
+![Firebase](https://img.shields.io/badge/Firebase-Realtime_Database-FFCA28?logo=firebase)
+![Roboflow](https://img.shields.io/badge/Roboflow-Dataset-purple)
+![SolidWorks](https://img.shields.io/badge/SolidWorks-3D_Design-red)
+
 A capstone project that combines real-time vehicle color detection using YOLOv8 on CUDA-accelerated hardware with an ESP32-based physical traffic light controller. Four webcams monitor each intersection direction (North, East, South, West), the model detects and counts vehicles per lane, and the result is sent over serial to an ESP32 that drives 12 real LEDs.
 
 ---
