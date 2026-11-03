@@ -1,4 +1,4 @@
-<img width="1078" height="301" alt="image" src="https://github.com/user-attachments/assets/9d8f20e8-3721-4ce4-b1f5-016b378d0244" /># 🚦 Adaptive Traffic Control System (ATCS)
+🚦 Adaptive Traffic Control System (ATCS)
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-Deep_Learning-EE4C2C?logo=pytorch)
