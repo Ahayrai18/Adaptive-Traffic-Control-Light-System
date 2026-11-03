@@ -1,5 +1,4 @@
-# 🚦 Adaptive Traffic Control System (ATCS)
-### Car Color Detection with YOLOv8 + ESP32 Traffic Light Controller
+<img width="1078" height="301" alt="image" src="https://github.com/user-attachments/assets/9d8f20e8-3721-4ce4-b1f5-016b378d0244" /># 🚦 Adaptive Traffic Control System (ATCS)
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-Deep_Learning-EE4C2C?logo=pytorch)
@@ -15,6 +14,8 @@
 ![Firebase](https://img.shields.io/badge/Firebase-Realtime_Database-FFCA28?logo=firebase)
 ![Roboflow](https://img.shields.io/badge/Roboflow-Dataset-purple)
 ![SolidWorks](https://img.shields.io/badge/SolidWorks-3D_Design-red)
+
+### Car Color Detection with YOLOv8 + ESP32 Traffic Light Controller
 
 A capstone project that combines real-time vehicle color detection using YOLOv8 on CUDA-accelerated hardware with an ESP32-based physical traffic light controller. Four webcams monitor each intersection direction (North, East, South, West), the model detects and counts vehicles per lane, and the result is sent over serial to an ESP32 that drives 12 real LEDs.
 
